@@ -109,7 +109,7 @@ function cc(that, px, py) {
     that.y = py + Math.cos(a) * that.r;
 
     if (a === Math.PI || a === 0) {
-      //that.vy = 0;
+      that.vy = 0;
     }
     if (a > Math.PI*0.5 || a < -Math.PI*0.5) {
       that.vy *= 0.6;
@@ -439,7 +439,7 @@ blocksArr = fillLevel("start");
 var frameCount = 0;
 var intervalID = setInterval(function() {
 
-  ctx.setTransform(0.5, 0, 0, 0.5, 0, 0);
+  ctx.setTransform(0.25, 0, 0, 0.25, 0, 0);
 
   //println(Scene);
   Scenes[Scene]();
