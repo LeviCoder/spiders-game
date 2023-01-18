@@ -218,7 +218,7 @@ Mouse = {
 
 function mousePressed(e) {
   console.log(e)
-  e.preventDefault();
+  //e.preventDefault();
   if (e.button === 2) {
     Mouse.rightClick = false;
   } else {
@@ -235,15 +235,14 @@ canvas.addEventListener("mouseup", mouseReleased);
 
 Keys = {};
 function keyPressed(e) {
-  //console.log(e)
   Keys[e.key] = true;
 };
 function keyReleased(e) {
   delete Keys[e.key];
 };
 
-window.addEventListener("keydown", keyPressed, false);
-window.addEventListener("keyup", keyReleased, false);
+canvas.addEventListener("keydown", keyPressed, false);
+canvas.addEventListener("keyup", keyReleased, false);
 
 Trans = {
 
