@@ -113,6 +113,13 @@ function image(img, x, y) {
   ctx.putImageData(img, x, y);
 }
 
+
+canvas.addEventListener("mousemove", function(e) {
+  //console.log(e)
+  mouseX = e.offsetX;
+  mouseY = e.offsetY;
+});
+
 /*
 function () {
 
