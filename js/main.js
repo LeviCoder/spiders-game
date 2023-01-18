@@ -15,25 +15,25 @@ var lvl = "one",
 var maps = {
   "one": [
     [
-      "###############",
-      "#..S..........#",
-      "#............##",
-      "#...........#.#",
-      "#..........#..#",
-      "#.........#...#",
-      "#........#....#",
-      "#.......#....##",
-      "#............A#",
-      "###############",
+      "################",
+      "#...S..#.......#",
+      "#......#......##",
+      "#......#.....#.#",
+      "#......#....#..#",
+      "#......#...#...#",
+      "#......#.......#",
+      "#......#s......##",
+      "#.............A#",
+      "################",
     ],
     {"A": ["two", "B"], "S": ["two", "B"]},
   ],
   "two": [
     [
       "###########....",
-      "#.....#...#....",
-      "#....#.#..#....",
-      "###...#...#####",
+      "#.........#....",
+      "#.........#....",
+      "###.......#####",
       "#B............#",
       "###############",
     ],
@@ -235,6 +235,7 @@ canvas.addEventListener("mouseup", mouseReleased);
 
 Keys = {};
 function keyPressed(e) {
+  e.preventDefault();
   Keys[e.key] = true;
 };
 function keyReleased(e) {
@@ -411,6 +412,154 @@ p.update = function() {
 
 // {
 
+
+var Spider = function(x, y) {
+  this.x = x;
+  this.y = y;
+
+  this.r = bs*0.5;
+
+  this.svx = 0;
+  this.svy = 0;
+
+  this.vx = 0;
+  this.vy = 0;
+
+  this.maxLegLength = 90;
+  this.tries = [
+    0, 1, -1, 2, -2, 3, -3, 4, -4, 5,
+    0.5, -0.5, 1.5, -1.5, 2.5, -2.5, 3.5, -3.5, 4.5, -4.5
+  ];
+
+  this.a = 0;
+
+  this.feet = (function(px, py) {
+    var f = [];
+
+    var mult = Math.PI*0.25;
+
+    for(var i = 0; i < 8; i++) {
+      //console.log(px + ", " + py);
+      f.push({
+        x: px,
+        y: py,
+
+        fromX: px,
+        fromY: py,
+
+        toX: px + Math.sin((i + 0.5)*mult)*10,
+        toY: py + Math.cos((i + 0.5)*mult)*10,
+
+        delay: i*3,
+        placed: false,
+      });
+      //console.log(f[i]);
+    }
+
+
+    return f;
+  })(x, y);
+};
+Spider.prototype.stepRay = function(x, y, vx, vy, count) {
+  //point(x, y);
+  //rect(x, y, 3, 3);
+  if(blocksArr[~~((y + vy)/bs)] && blocksArr[~~((y + vy)/bs)][~~((x + vx)/bs)] !== undefined && blocksArr[~~((y + vy)/bs)][~~((x + vx)/bs)].solid) {
+    //console.log(x, y)
+    return {x: x, y: y};
+  } else if(count < this.maxLegLength) {
+    return this.stepRay(x + vx, y + vy, vx, vy, count + 2);
+  }
+  return false;
+};
+Spider.prototype.placeFoot = function(an) {
+  var run = false, i = 0;
+  while(run === false && i < this.tries.length) {
+    var a = an + this.tries[i]*0.2*Math.PI;
+    run = this.stepRay(this.x, this.y, Math.sin(a)*2, Math.cos(a)*2, 0);
+    i++;
+  }
+  return run;
+};
+Spider.prototype.updateFoot = function(f, i) {
+  //console.log(f)
+  f.delay++;
+  if(f.delay <= 10) {
+    f.x = lerp(f.fromX, f.toX, f.delay*0.1);
+    f.y = lerp(f.fromY, f.toY, f.delay*0.1);
+//console.log(f.delay)
+} else if(/*dist(this.x, this.y, f.x, f.y) > this.maxLegLength || */frameCount*0.2 % 8 === i) {
+    //var coords = this.placeFoot(Math.atan2(mouseX - this.x, mouseY - this.y) + Math.random(-1, 1));
+    var coords = this.placeFoot(this.a + Math.random(-1, 1));
+    if(coords) {
+      f.fromX = this.x;
+      f.fromY = this.y;
+
+      f.toX = this.x - (coords.x - this.x);
+      f.toY = this.y - (coords.y - this.y);
+      f.delay = 0;
+      f.placed = false;
+    }
+  } else {
+    f.placed = true;
+  }
+
+  if(f.placed) {
+    fill(255, 0, 0);
+    circle(f.x, f.y, 5, 5);
+  }
+
+  stroke(0, 0, 0);
+  line(this.x, this.y, f.x, f.y);
+
+};
+Spider.prototype.update = function() {
+  var sx = 0, sy = 0, cc = 0;
+
+  for(var i = 0; i < this.feet.length; i++) {
+    this.updateFoot(this.feet[i], i);
+    if(true || this.feet[i].placed) {
+      sx += this.feet[i].x;
+      sy += this.feet[i].y;
+      cc++;
+    }
+  }
+
+
+  sx /= cc;
+  sy /= cc;
+
+  var a = Math.atan2(sx - this.x, sy - this.y), d = constrain(dist(0, 0, sx - this.x, sy - this.y), 0, 0.5);
+  this.a += (Math.random() - 0.5)*1;
+  this.vx += Math.sin(a)*d;
+  this.vy += Math.cos(a)*d;
+
+  this.x += this.vx;
+  this.y += this.vy;
+
+  this.vx *= 0.97;
+  this.vy *= 0.97;
+
+  this.svx = (mouseX - this.x);
+  this.svy = (mouseY - this.y);
+
+  var a = Math.atan2(this.svx, this.svy)
+  //console.log(this.stepRay(this.x, this.y, Math.sin(this.a)*2, Math.cos(this.a)*2, 0))
+
+  circCollide(this, checkBlocks(this.x, this.y, blocksArr));
+
+  fill(255, 0, 0);
+  circle(this.x, this.y, this.r*2);
+  line(this.x, this.y, this.x + Math.sin(this.a)*100, this.y + Math.cos(this.a)*100);
+  fill(255, 0, 0, 30);
+  circle(this.x, this.y, this.maxLegLength*2);
+};
+
+var s = new Spider(200, 100);
+
+// } spider object
+
+// {
+
 Block = function(x, y, type) {
   this.x = x * bs;
   this.y = y * bs;
@@ -505,10 +654,11 @@ Scenes = {
       }
     }
 
+    s.update();
+
 
     p.update();
     popMatrix();
-
 
     //line(300, 300, mouseX, mouseY);
     //println(atan2(mouseX - 300, mouseY - 300));
