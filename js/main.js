@@ -5,25 +5,39 @@
 
 try {
 
-var Block, p;
+var Block, Pipe, p;
 var grav = 0.4;
 
 // {
 
-var lvl = "start",
+var lvl = "one",
   blocksArr = [];
 var maps = {
-  "start": [
-    "###############",
-    "#.............#",
-    "#............##",
-    "#..#........#.#",
-    "#..........#..#",
-    "######....#...#",
-    "#........#....#",
-    "#.......#.....#",
-    "#.............#",
-    "###############",
+  "one": [
+    [
+      "###############",
+      "#..S..........#",
+      "#............##",
+      "#...........#.#",
+      "#..........#..#",
+      "#.........#...#",
+      "#........#....#",
+      "#.......#....##",
+      "#............A#",
+      "###############",
+    ],
+    {"A": ["two", "B"], "S": ["two", "B"]},
+  ],
+  "two": [
+    [
+      "###########....",
+      "#.....#...#....",
+      "#....#.#..#....",
+      "###...#...#####",
+      "#B............#",
+      "###############",
+    ],
+    {"B": ["one", "A"]}
   ],
 };
 
@@ -33,13 +47,26 @@ var blockKeys = {
 
 function fillLevel(l) {
   lvl = l;
-  l = maps[l];
+  l = maps[l][0];
 
   var arr = [];
   for (var y = 0; y < l.length; y++) {
     arr.push([]);
     for (var x = 0; x < l[y].length; x++) {
-      if (l[y][x] !== ".") {
+      if(l[y][x] === p.spawn) {
+
+        p.x = (x + 0.5)*bs;
+        p.y = (y + 0.5)*bs;
+
+        p.vx = 0;
+        p.vy = 0;
+        p.jump = false;
+        p.onSpawn = 2;
+      }
+      if(maps[lvl][1][l[y][x]] !== undefined) {
+        arr[y].push(new Pipe(x, y, l[y][x], maps[lvl][1][l[y][x]]))
+
+      } else if (l[y][x] !== ".") {
         arr[y].push(new Block(x, y, l[y][x]));
       } else {
         arr[y].push(undefined);
@@ -109,7 +136,7 @@ function cc(that, px, py) {
     that.y = py + Math.cos(a) * that.r;
 
     if (a === Math.PI || a === 0) {
-      //that.vy = 0;
+      that.vy = 0;
     }
     if (a > Math.PI*0.5 || a < -Math.PI*0.5) {
       that.vy *= 0.6;
@@ -126,21 +153,36 @@ function cc(that, px, py) {
 }
 
 function circCollide(that, blocks) {
+  var skip = false;
   for (var i = 0; i < blocks.length; i++) {
     var px = constrain(that.x, blocks[i].x, blocks[i].x + blocks[i].w),
       py = constrain(that.y, blocks[i].y, blocks[i].y + blocks[i].h);
 
-    if (px === that.x || py === that.y) {
+    if (blocks.solid && (px === that.x || py === that.y)) {
       cc(that, px, py);
       blocks.splice(i, 1);
     }
   }
+
+
   for (var i = 0; i < blocks.length; i++) {
     var px = constrain(that.x, blocks[i].x, blocks[i].x + blocks[i].w),
       py = constrain(that.y, blocks[i].y, blocks[i].y + blocks[i].h);
 
-    cc(that, px, py);
+      if(!blocks[i].solid) {
+
+        if(init(that.x, that.y, blocks[i].x, blocks[i].y, blocks[i].w, blocks[i].h)) {
+
+  //console.log(blocks[i].pipe)
+          blocks[i].onCollide(that);
+        }
+
+        //console.log(i)
+      } else if(blocks[i].solid) {
+      cc(that, px, py);
+    }
   }
+  //console.log(skip)
 }
 
 // } collision functions
@@ -185,25 +227,23 @@ function mousePressed(e) {
   }
 
 };
-
 function mouseReleased() {
   Mouse.press = false;
 };
+canvas.addEventListener("mousedown", mousePressed);
+canvas.addEventListener("mouseup", mouseReleased);
 
 Keys = {};
 function keyPressed(e) {
-
+  //console.log(e)
   Keys[e.key] = true;
 };
-
 function keyReleased(e) {
   delete Keys[e.key];
 };
 
-canvas.addEventListener("mousedown", mousePressed);
-canvas.addEventListener("mouseup", mouseReleased);
-document.body.addEventListener("keydown", keyPressed);
-document.body.addEventListener("keyup", keyReleased);
+window.addEventListener("keydown", keyPressed, false);
+window.addEventListener("keyup", keyReleased, false);
 
 Trans = {
 
@@ -307,7 +347,7 @@ ImageLoader = {
 
 // {
 var p = {
-  x: 80,
+  x: 200,
   y: 100,
 
   r: bs * 0.5,
@@ -317,6 +357,10 @@ var p = {
 
   jump: false,
   coll: false,
+
+  spawn: "S",
+  isPlayer: true,
+  onSpawn: 2,
 };
 p.draw = function() {
   fill(255, 0, 0);
@@ -327,14 +371,14 @@ p.draw = function() {
   //rect(this.x - this.r, this.y - this.r, this.r*2, this.r*2)
 };
 p.move = function() {
-  if (Keys.a) {
+  if (Keys.a || Keys.ArrowLeft) {
     this.vx = -2;
   }
-  if (Keys.d) {
+  if (Keys.d || Keys.ArrowRight) {
     this.vx = 2;
   }
 
-  if (Keys.w && this.jump) {
+  if ((Keys.w || Keys.ArrowUp) && this.jump) {
     this.vy = -8;
     this.jump = false;
   }
@@ -354,9 +398,13 @@ p.update = function() {
   this.jump = false;
 
 
+  this.onSpawn = constrain(this.onSpawn - 1, -1, 5);
 
   circCollide(this, checkBlocks(this.x, this.y, blocksArr));
+
+
   this.draw();
+  //console.log(this.onSpawn);
 
 };
 
@@ -371,10 +419,43 @@ Block = function(x, y, type) {
   this.w = bs;
   this.h = bs;
 
-  this.isBlock = true;
+  this.solid = true;
 };
 Block.prototype.draw = function() {
-  fill(100);
+  fill(50, 53, 64);
+  rect(this.x, this.y, this.w, this.h);
+};
+
+Pipe = function(x, y, pipe, data) {
+  this.x = x * bs;
+  this.y = y * bs;
+
+  this.w = bs;
+  this.h = bs;
+
+  this.solid = false;
+  this.toLevel = data[0];
+  this.toPipe = data[1];
+  this.pipe = pipe;
+};
+Pipe.prototype.onCollide = function(that) {
+  console.log(this.pipe + " " + that.spawn + " " + that.onSpawn);
+  if(that.spawn === this.pipe && that.onSpawn > 0) {
+    that.onSpawn = 2;
+  }
+  if(that.onSpawn < 0) {
+    console.log(this.pipe + ". " + this.toLevel + ": " + this.toPipe);
+    that.spawn = this.toPipe;
+    if(that.isPlayer) {
+      blocksArr = fillLevel(this.toLevel);
+    }
+  }
+
+  return that.spawn !== this.pipe;
+
+};
+Pipe.prototype.draw = function() {
+  fill("lightgreen");
   rect(this.x, this.y, this.w, this.h);
 };
 
@@ -418,12 +499,13 @@ Scenes = {
 
     for (var y = 0; y < blocksArr.length; y++) {
       for (var x = 0; x < blocksArr[y].length; x++) {
-        if (blocksArr[y][x] && blocksArr[y][x].isBlock) {
+        if (blocksArr[y][x]) {
           blocksArr[y][x].draw();
 
         }
       }
     }
+
 
     p.update();
     popMatrix();
@@ -434,12 +516,12 @@ Scenes = {
   },
 };
 
-blocksArr = fillLevel("start");
+blocksArr = fillLevel(lvl);
 
 var frameCount = 0;
 var intervalID = setInterval(function() {
 
-  ctx.setTransform(0.5, 0, 0, 0.5, 0, 0);
+  ctx.setTransform(1/3, 0, 0, 1/3, 0, 0);
 
   //println(Scene);
   Scenes[Scene]();
