@@ -14,6 +14,9 @@ function constrain(n, min, max) {
 function dist(ax, ay, bx, by) {
   return Math.sqrt((ax - bx)*(ax - bx) + (ay - by)*(ay - by))
 }
+function lerp(a, b, n) {
+  return a + (a - b)*n;
+}
 
 function background(r, g, b, a) {
   ctx.save();
@@ -45,6 +48,14 @@ function circle(x, y, w) {
   ctx.arc(x, y, w*0.5, 0, Math.PI*2);
   ctx.fill();
 }
+
+function line(ax, ay, bx, by) {
+  ctx.beginPath();
+  ctx.moveTo(ax, ay);
+  ctx.lineTo(bx, by);
+  ctx.stroke();
+}
+
 
 function stroke(r, g, b, a) {
   if (a !== undefined) {
