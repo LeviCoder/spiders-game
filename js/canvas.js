@@ -15,7 +15,7 @@ function dist(ax, ay, bx, by) {
   return Math.sqrt((ax - bx)*(ax - bx) + (ay - by)*(ay - by))
 }
 function lerp(a, b, n) {
-  return a + (a - b)*n;
+  return a + (b - a)*n;
 }
 
 function background(r, g, b, a) {

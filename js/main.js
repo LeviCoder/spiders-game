@@ -9,8 +9,9 @@
 
 try {
 
-var Block, Pipe, p;
+var Block, Stick, Pipe, Rock, Spear, p;
 var grav = 0.4;
+var rocks = [], spiders = [];
 
 // {
 
@@ -20,17 +21,17 @@ var maps = {
   "one": [
     [
       "################",
-      "#...S..#.......#",
-      "#......#......##",
-      "#......#.....#.#",
-      "#......#....#..#",
-      "#......#...#...#",
-      "#......#.......#",
-      "#..............#",
-      "#.............A#",
+      "#...B..........#",
+      "#.............##",
+      "#..|.........###",
+      "#..|........##.#",
+      "#..|.......##..#",
+      "#..|.SSS..##...#",
+      "#..|.....RRR...#",
+      "#..|..........A#",
       "################",
     ],
-    {"A": ["two", "B"], "S": ["two", "B"]},
+    {"A": ["two", "B"], "B": ["two", "B"]},
   ],
   "two": [
     [
@@ -46,7 +47,7 @@ var maps = {
   "three": [
     [
       "################",
-      "#S#............#",
+      "#B#............#",
       "###....####....#",
       "#...####.......#",
       "#.###..........#",
@@ -64,7 +65,7 @@ var maps = {
       "#..............#",
       "################",
     ],
-    {"S": ["two", "B"]},
+    {"B": ["two", "B"]},
   ],
 };
 
@@ -75,6 +76,8 @@ var blockKeys = {
 function fillLevel(l) {
   lvl = l;
   l = maps[l][0];
+
+  rocks = [];
 
   var arr = [];
   for (var y = 0; y < l.length; y++) {
@@ -93,6 +96,14 @@ function fillLevel(l) {
       if(maps[lvl][1][l[y][x]] !== undefined) {
         arr[y].push(new Pipe(x, y, l[y][x], maps[lvl][1][l[y][x]]))
 
+      } else if (l[y][x] === "|") {
+        arr[y].push(new Stick(x, y, l[y][x]));
+      } else if (l[y][x] === "R") {
+        rocks.push(new Rock(x*bs, y*bs, 0, 0.2))
+        arr[y].push(undefined);
+      } else if (l[y][x] === "S") {
+        rocks.push(new Spear(x*bs, y*bs, 0, 0.2))
+        arr[y].push(undefined);
       } else if (l[y][x] !== ".") {
         arr[y].push(new Block(x, y, l[y][x]));
       } else {
@@ -118,7 +129,6 @@ function coll(a, b) {
     b.x < a.x + a.w &&
     b.y < a.y + a.h;
 }
-
 function init(ax, ay, bx, by, bw, bh) {
   return ax < bx + bw &&
     ay < by + bh &&
@@ -162,7 +172,6 @@ function checkBlocks(px, py, level, s) {
 
   return n;
 }
-
 function cc(that, px, py) {
 
   if (dist(that.x, that.y, px, py) < that.r) {
@@ -180,14 +189,13 @@ function cc(that, px, py) {
 
     }
     if (a === Math.PI*0.5 || a === -Math.PI*0.5) {
-      that.vx = 0;
+      that.vx *= -0.3;
     }
 
     that.coll = true;
   }
 
 }
-
 function circCollide(that, blocks) {
   var skip = false;
   for (var i = 0; i < blocks.length; i++) {
@@ -203,18 +211,18 @@ function circCollide(that, blocks) {
 
   for (var i = 0; i < blocks.length; i++) {
     var px = constrain(that.x, blocks[i].x, blocks[i].x + blocks[i].w),
-      py = constrain(that.y, blocks[i].y, blocks[i].y + blocks[i].h);
+    py = constrain(that.y, blocks[i].y, blocks[i].y + blocks[i].h);
 
-      if(!blocks[i].solid) {
+    if(!blocks[i].solid) {
 
-        if(init(that.x, that.y, blocks[i].x, blocks[i].y, blocks[i].w, blocks[i].h)) {
+      var stickExtra = blocks[i].isStick ? 10 : 0;
+      if(init(that.x, that.y, blocks[i].x - stickExtra, blocks[i].y, blocks[i].w + stickExtra*2, blocks[i].h)) {
 
-  //console.log(blocks[i].pipe)
-          blocks[i].onCollide(that);
-        }
+        blocks[i].onCollide(that);
+      }
 
-        //console.log(i)
-      } else if(blocks[i].solid) {
+      //console.log(i)
+    } else if(blocks[i].solid) {
       cc(that, px, py);
     }
   }
@@ -271,6 +279,7 @@ canvas.addEventListener("mouseup", mouseReleased);
 
 Keys = {};
 function keyPressed(e) {
+  console.log(e.key);
   e.preventDefault();
   Keys[e.key] = true;
 };
@@ -380,6 +389,133 @@ ImageLoader = {
 
 // } interaction and misc functions
 
+// {
+
+Rock = function(x, y, a) {
+  this.x = x;
+  this.y = y;
+
+  this.v = 8;
+
+  this.vx = Math.sin(a)*2;
+  this.vy = Math.cos(a)*2;
+
+  this.r = 10;
+  this.grav = 0.3;
+
+  this.dead = false;
+  this.timer = 0;
+};
+Rock.prototype.reset = function(x, y, a) {
+  this.x = x;
+  this.y = y;
+
+  this.vx = Math.sin(a)*this.v;
+  this.vy = Math.cos(a)*this.v;
+
+  this.timer = 0;
+  this.dead = false;
+};
+Rock.prototype.update = function () {
+
+  if(!init(this.vx, this.vy, -0.1, -0.1, 0.2, 0.2)) {
+    this.vy += this.grav;
+
+    this.x += this.vx;
+    this.y += this.vy;
+
+    this.coll = false;
+    circCollide(this, checkBlocks(this.x, this.y, blocksArr));
+
+    if(this.coll) {
+      this.vx *= 0.8;
+      this.vy *= 0.8;
+    }
+  }
+
+  if(Keys[" "] && !p.holding && this.timer > 10 && dist(this.x, this.y, p.x, p.y) < this.r + p.r) {
+    p.holding = this;
+    this.dead = true;
+  }
+
+  circle(this.x, this.y, this.r*2);
+  this.timer++;
+};
+
+Spear = function(x, y, a) {
+  this.x = x;
+  this.y = y;
+
+  this.v = 8;
+
+  this.vx = Math.sin(a)*2;
+  this.vy = Math.cos(a)*2;
+
+  this.r = 8;
+  this.grav = 0.1;
+
+  this.dead = false;
+  this.timer = 0;
+  this.stillTimer = 0;
+
+  this.a = a;
+};
+Spear.prototype.reset = function(x, y, a) {
+  this.x = x;
+  this.y = y;
+
+  this.vx = Math.sin(a)*this.v;
+  this.vy = Math.cos(a)*this.v;
+
+  this.timer = 0;
+
+  this.stillTimer = 0;
+  this.dead = false;
+
+  this.a = a;
+};
+Spear.prototype.run = function () {
+
+  if(!init(this.vx, this.vy, -0.1, -0.1, 0.2, 0.2) || this.stillTimer === 240) {
+    this.vy = constrain(this.vy + this.grav, -this.v, this.v);
+    this.vx = constrain(this.vx, -this.v, this.v);
+
+    this.x = this.x + this.vx;
+    this.y = this.y + this.vy;
+
+    this.a = Math.atan2(this.vx, this.vy);
+
+    this.coll = false;
+    circCollide(this, checkBlocks(this.x, this.y, blocksArr));
+
+    if(this.coll) {
+      this.vx *= 0;
+      this.vy *= 0;
+    }
+  } else {
+    this.stillTimer ++;
+  }
+
+  //circle(this.x, this.y, this.r*2);
+
+};
+Spear.prototype.update = function () {
+  for(var i = 0; i < 2; i++) {
+    this.run();
+  }
+
+  if(Keys[" "] && !p.holding && this.timer > 10 && dist(this.x, this.y, p.x, p.y) < this.r + p.r) {
+    p.holding = this;
+    this.dead = true;
+  }
+  stroke(0, 0, 0);
+  strokeWeight(2);
+  var vx = Math.sin(this.a)*this.r*2, vy = Math.cos(this.a)*this.r*2;
+  line(this.x - vx, this.y - vy, this.x + vx, this.y + vy)
+  this.timer++;
+};
+
+// } thrown rocks and spears
 
 // {
 var p = {
@@ -394,9 +530,11 @@ var p = {
   jump: false,
   coll: false,
 
-  spawn: "S",
+  spawn: "B",
   isPlayer: true,
   onSpawn: 2,
+
+  holding: false,
 };
 p.draw = function() {
   fill(255, 0, 0);
@@ -417,6 +555,8 @@ p.move = function() {
   if ((Keys.w || Keys.ArrowUp) && this.jump) {
     this.vy = -8;
     this.jump = false;
+  } else if ((Keys.w || Keys.ArrowUp) && this.climb && this.vy > -2) {
+    this.vy = -2;
   }
 };
 p.update = function() {
@@ -435,12 +575,19 @@ p.update = function() {
 
 
   this.onSpawn = constrain(this.onSpawn - 1, -1, 5);
+  this.climb = false;
 
   circCollide(this, checkBlocks(this.x, this.y, blocksArr));
 
 
   this.draw();
-  //console.log(this.onSpawn);
+
+  if(Mouse.click && this.holding) {
+    this.holding.reset(this.x, this.y, Math.atan2(mouseX - this.x, mouseY - this.y), 10);
+    rocks.push(this.holding);
+    this.holding = false;
+  }
+  //console.log(this.holding);
 
 };
 
@@ -449,7 +596,7 @@ p.update = function() {
 // {
 
 
-var Spider = function(x, y) {
+Spider = function(x, y) {
   this.x = x;
   this.y = y;
 
@@ -482,11 +629,12 @@ var Spider = function(x, y) {
   }
 
   this.a = 0;
+  this.ll = this.maxLegLength/5;
 
-  this.feet = (function(px, py) {
+  this.feet = (function(px, py, sl) {
     var f = [];
 
-    var mult = Math.PI*0.25;
+    var mult = Math.PI*0.25, dMult = 40/8;
 
     for(var i = 0; i < 8; i++) {
       //console.log(px + ", " + py);
@@ -497,10 +645,17 @@ var Spider = function(x, y) {
         fromX: px,
         fromY: py,
 
+        nodes: [
+          [0, 0],
+          [0, 0],
+          [0, 0],
+          [0, 0],
+        ],
+
         toX: px + Math.sin((i + 0.5)*mult)*10,
         toY: py + Math.cos((i + 0.5)*mult)*10,
 
-        delay: i*3,
+        delay: i*dMult,
         placed: false,
       });
       //console.log(f[i]);
@@ -513,13 +668,25 @@ var Spider = function(x, y) {
   this.q = [];
   this.z = [];
 };
+
+Spider.prototype.place = function(a, n) {
+  var r = Math.atan2(n[0] - a[0], n[1] - a[1]);
+  n[0] = lerp(a[0] + Math.sin(r)*this.ll, n[0], 0.5);
+  n[1] = lerp(a[1] + Math.cos(r)*this.ll, n[1], 0.5);
+};
 Spider.prototype.stepRay = function(x, y, vx, vy, count) {
   //point(x, y);
   //rect(x, y, 3, 3);
-  if(blocksArr[~~((y + vy)/bs)] && blocksArr[~~((y + vy)/bs)][~~((x + vx)/bs)] !== undefined && blocksArr[~~((y + vy)/bs)][~~((x + vx)/bs)].solid) {
-    return {x: x, y: y};
-  } else if(count < this.maxLegLength) {
-    return this.stepRay(x + vx, y + vy, vx, vy, count + 2);
+  x += vx;
+  y += vy;
+  if(blocksArr[~~(y/bs)] && blocksArr[~~(y/bs)][~~(x/bs)] !== undefined) {
+    var b = blocksArr[~~(y/bs)][~~(x/bs)];
+    if(b.isStick && count > 40 && init(x, y, b.x, b.y, b.w, b.h) || b.solid && !b.isStick) {
+      return {x: x - vx, y: y - vy};
+    }
+  }
+  if(count < this.maxLegLength) {
+    return this.stepRay(x, y, vx, vy, count + 2);
   }
   return false;
 };
@@ -534,12 +701,11 @@ Spider.prototype.placeFoot = function(an) {
 };
 Spider.prototype.updateFoot = function(f, i) {
 
-  f.delay++;
-  if(f.delay <= 5) {
-    f.x = lerp(f.fromX, f.toX, f.delay*0.2);
-    f.y = lerp(f.fromY, f.toY, f.delay*0.2);
+  if(f.delay <= 10) {
+    f.x = lerp(f.fromX, f.toX, f.delay*0.1);
+    f.y = lerp(f.fromY, f.toY, f.delay*0.1);
 
-  } else if(frameCount*0.5 % 8 === i) {
+  } else if(f.delay > 40) {
 
     var a = this.findDir(~~(mouseX/bs), ~~(mouseY/bs));
     if(a && !(a[0] === 0 && a[1] === 0)) {
@@ -547,25 +713,53 @@ Spider.prototype.updateFoot = function(f, i) {
     }
     var coords = this.placeFoot(this.a + (Math.random() - 0.5));
     if(coords) {
-      f.fromX = this.x;
-      f.fromY = this.y;
+      f.fromX = f.toX;
+      f.fromY = f.toY;
 
-      f.toX = this.x - (coords.x - this.x);
-      f.toY = this.y - (coords.y - this.y);
+      f.toX = coords.x;
+      f.toY = coords.y;
       f.delay = 0;
       f.placed = false;
     }
   } else {
     f.placed = true;
   }
+  f.delay++;
 
   if(f.placed) {
     fill(255, 0, 0);
     circle(f.x, f.y, 5, 5);
   }
 
+  f.nodes[3][0] = f.x;
+  f.nodes[3][1] = f.y;
+
+  f.nodes[0][0] = this.x;
+  f.nodes[0][1] = this.y;
+
   stroke(0, 0, 0);
-  line(this.x, this.y, f.x, f.y);
+  //line(this.x, this.y, f.x, f.y);
+  var l = 4;
+  for(var i = 1; i < l - 1; i++) {
+    f.nodes[i][1] -= (f.nodes[3][1] < f.nodes[0][1] ? -1 : 1)*5;
+    f.nodes[i][0] -= (f.nodes[3][0] < f.nodes[0][0] ? 1 : -1)*3;
+  }
+  for(var i = 1; i < l - 1; i++) {
+    this.place(f.nodes[i - 1], f.nodes[i]);
+    this.place(f.nodes[l - i], f.nodes[(l - i) - 1]);
+  }
+
+  strokeWeight(3);
+  ctx.beginPath();
+  ctx.moveTo(f.nodes[0][0], f.nodes[0][1]);
+  for(var i = 0; i < l; i++) {
+    ctx.lineTo(f.nodes[i][0], f.nodes[i][1]);
+  }
+  ctx.stroke();
+
+
+
+
 
 };
 Spider.prototype.update = function() {
@@ -575,10 +769,12 @@ Spider.prototype.update = function() {
 
   for(var i = 0; i < this.feet.length; i++) {
     this.updateFoot(this.feet[i], i);
-    var s = spring(this.feet[i].x, this.feet[i].y, this.x, this.y, this.r*1.5, 0.04);
+    if(this.feet[i].placed) {
+      var s = spring(this.feet[i].x, this.feet[i].y, this.x, this.y, this.r*2, 0.04);
 
-    sx += s.x;
-    sy += s.y;
+      sx += s.x;
+      sy += s.y;
+    }
   }
 
 
@@ -592,19 +788,19 @@ Spider.prototype.update = function() {
 
   circCollide(this, checkBlocks(this.x, this.y, blocksArr));
 
-  fill(255, 0, 0);
+  fill(0, 0, 0);
   circle(this.x, this.y, this.r*2);
-  //line(this.x, this.y, this.x + Math.sin(this.a)*this.r, this.y + Math.cos(this.a)*rhis.r);
+  line(this.x, this.y, this.x + Math.sin(this.a)*this.r, this.y + Math.cos(this.a)*this.r);
 
   fill(255, 0, 0, 30);
-  circle(this.x, this.y, this.maxLegLength*2);
+  //circle(this.x, this.y, this.maxLegLength*2);
 };
 Spider.prototype.addToQ = function(x, y, vx, vy) {
   x += vx;
   y += vy;
 
 
-  if(blocksArr[y] && (blocksArr[y][x] === undefined || !blocksArr[y][x].solid) && this.z[y][x] === -1) {
+  if(blocksArr[y] && (blocksArr[y][x] === undefined || !blocksArr[y][x].solid/* && !blocksArr[y][x].isStick*/) && this.z[y][x] === -1) {
 
     this.q.push([x - vx, y - vy, vx, vy]);
     //rect(x*bs, y*bs, bs, bs);
@@ -629,6 +825,7 @@ Spider.prototype.checkBlock = function(x, y, vx, vy) {
     this.addToQ(x, y, -1, -1);
     this.addToQ(x, y, 1, -1);
 
+    //rect(x*bs, y*bs, bs, bs)
   }
 };
 Spider.prototype.findDir = function(x, y) {
@@ -658,7 +855,7 @@ Spider.prototype.findDir = function(x, y) {
 
 };
 
-var s = new Spider(200, 100);
+spiders.push(new Spider(200, 100));
 
 // } spider object
 
@@ -676,6 +873,28 @@ Block = function(x, y, type) {
 Block.prototype.draw = function() {
   fill(50, 53, 64);
   rect(this.x, this.y, this.w, this.h);
+};
+
+Stick = function(x, y, type) {
+  this.x = (x + 0.5) * bs - 2;
+  this.y = y * bs;
+
+  this.w = 4;
+  this.h = bs;
+
+  this.solid = !true;
+  this.isStick = true;
+};
+Stick.prototype.draw = function() {
+  fill(0, 0, 0);
+  rect(this.x, this.y, this.w, this.h);
+};
+Stick.prototype.onCollide = function(that) {
+
+  if(that.isPlayer) {
+    that.climb = true;
+  }
+
 };
 
 Pipe = function(x, y, pipe, data) {
@@ -758,8 +977,17 @@ Scenes = {
       }
     }
 
-    s.update();
+    for(var i = 0; i < spiders.length; i++) {
+      spiders[i].update();
+    }
 
+    for(var i = 0; i < rocks.length; i++) {
+      rocks[i].update();
+      if(rocks[i].dead) {
+        rocks.splice(i, 1);
+        i--;
+      }
+    }
 
     p.update();
     popMatrix();
