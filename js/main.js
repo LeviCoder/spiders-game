@@ -15,20 +15,20 @@ var rocks = [], spiders = [];
 
 // {
 
-var lvl = "three",
+var lvl = "one",
   blocksArr = [];
 var maps = {
   "one": [
     [
       "################",
-      "#...B..........#",
+      "#...B....E.....#",
       "#.............##",
-      "#..|.........###",
-      "#..|........##.#",
-      "#..|.......##..#",
-      "#..|.SSS..##...#",
-      "#..|.....RRR...#",
-      "#..|..........A#",
+      "#............###",
+      "#...........##.#",
+      "#..........##..#",
+      "#....SSS..##...#",
+      "#........RRR...#",
+      "#.............A#",
       "################",
     ],
     {"A": ["two", "B"], "B": ["two", "B"]},
@@ -47,7 +47,7 @@ var maps = {
   "three": [
     [
       "################",
-      "#B#............#",
+      "#B.............#",
       "###....####....#",
       "#...####.......#",
       "#.###..........#",
@@ -74,7 +74,8 @@ var blockKeys = {
 };
 
 function fillLevel(l) {
-  lvl = l;
+  //lvl = l;
+  var lName = l;
   l = maps[l][0];
 
   rocks = [];
@@ -88,6 +89,8 @@ function fillLevel(l) {
         p.x = (x + 0.5)*bs;
         p.y = (y + 0.5)*bs;
 
+        lvl = lName;
+
         p.vx = 0;
         p.vy = 0;
         p.jump = false;
@@ -95,26 +98,39 @@ function fillLevel(l) {
       }
       if(maps[lvl][1][l[y][x]] !== undefined) {
         arr[y].push(new Pipe(x, y, l[y][x], maps[lvl][1][l[y][x]]))
-
-      } else if (l[y][x] === "|") {
-        arr[y].push(new Stick(x, y, l[y][x]));
-      } else if (l[y][x] === "R") {
-        rocks.push(new Rock(x*bs, y*bs, 0, 0.2))
-        arr[y].push(undefined);
-      } else if (l[y][x] === "S") {
-        rocks.push(new Spear(x*bs, y*bs, 0, 0.2))
-        arr[y].push(undefined);
-      } else if (l[y][x] !== ".") {
-        arr[y].push(new Block(x, y, l[y][x]));
+        maps[lName][1][l[y][x]].push((x + 0.5)*bs);
+        maps[lName][1][l[y][x]].push((y + 0.5)*bs);
       } else {
-        arr[y].push(undefined);
+
+        switch (l[y][x]) {
+          case "|":
+            arr[y].push(new Stick(x, y, l[y][x]));
+            break;
+          case "E":
+            maps[lName].spiders.push(new Spider(x*bs, y*bs))
+            arr[y].push(undefined);
+            break;
+          case "R":
+            maps[lName].rocks.push(new Rock(x*bs, y*bs, 0, 0.2))
+            arr[y].push(undefined);
+            break;
+          case "S":
+            maps[lName].rocks.push(new Spear(x*bs, y*bs, 0, 0.2))
+            arr[y].push(undefined);
+            break;
+          case "#":
+            arr[y].push(new Block(x, y, l[y][x]));
+            break;
+          default:
+            arr[y].push(undefined);
+        }
+
       }
     }
   }
 
   return arr;
 }
-
 
 
 // } levels
@@ -172,13 +188,15 @@ function checkBlocks(px, py, level, s) {
 
   return n;
 }
-function cc(that, px, py) {
+function cc(that, px, py, pr) {
 
-  if (dist(that.x, that.y, px, py) < that.r) {
+  pr = pr || 0;
+
+  if (dist(that.x, that.y, px, py) < that.r + pr) {
     var a = Math.atan2(that.x - px, that.y - py);
 
-    that.x = px + Math.sin(a) * that.r;
-    that.y = py + Math.cos(a) * that.r;
+    that.x = px + Math.sin(a) * (that.r + pr);
+    that.y = py + Math.cos(a) * (that.r + pr);
 
     if (a === Math.PI || a === 0) {
       that.vy = 0;
@@ -418,18 +436,38 @@ Rock.prototype.reset = function(x, y, a) {
 };
 Rock.prototype.update = function () {
 
-  if(!init(this.vx, this.vy, -0.1, -0.1, 0.2, 0.2)) {
-    this.vy += this.grav;
 
-    this.x += this.vx;
-    this.y += this.vy;
+  this.vy += this.grav;
 
-    this.coll = false;
-    circCollide(this, checkBlocks(this.x, this.y, blocksArr));
+  this.x += this.vx;
+  this.y += this.vy;
 
-    if(this.coll) {
-      this.vx *= 0.8;
-      this.vy *= 0.8;
+  this.coll = false;
+  circCollide(this, checkBlocks(this.x, this.y, blocksArr));
+
+  if(this.coll) {
+    this.vx *= 0.8;
+    this.vy *= 0.8;
+  }
+
+  if(!init(this.vx, this.vy, -0.05, -0.05, 0.1, 0.1)) {
+    for(var i = 0; i < spiders.length; i++) {
+
+      this.coll = false;
+      cc(this, spiders[i].x, spiders[i].y, spiders[i].r);
+
+      if(this.coll) {
+        if(this.hitSpider !== i) {
+          console.log(frameCount, "rock hit spider[" + i + "]");
+          this.hitSpider = i;
+          this.vx = 0;
+          this.vy = 0;
+
+          spiders[i].health -= 0.35;
+        }
+      } else if(this.hitSpider === i) {
+        this.hitSpider = -1;
+      }
     }
   }
 
@@ -438,6 +476,7 @@ Rock.prototype.update = function () {
     this.dead = true;
   }
 
+  fill(0, 0, 0)
   circle(this.x, this.y, this.r*2);
   this.timer++;
 };
@@ -457,6 +496,7 @@ Spear = function(x, y, a) {
   this.dead = false;
   this.timer = 0;
   this.stillTimer = 0;
+  this.still  = false;
 
   this.a = a;
 };
@@ -471,12 +511,13 @@ Spear.prototype.reset = function(x, y, a) {
 
   this.stillTimer = 0;
   this.dead = false;
+  this.still = false;
 
   this.a = a;
 };
 Spear.prototype.run = function () {
 
-  if(!init(this.vx, this.vy, -0.1, -0.1, 0.2, 0.2) || this.stillTimer === 240) {
+  if(!this.still) {
     this.vy = constrain(this.vy + this.grav, -this.v, this.v);
     this.vx = constrain(this.vx, -this.v, this.v);
 
@@ -491,9 +532,35 @@ Spear.prototype.run = function () {
     if(this.coll) {
       this.vx *= 0;
       this.vy *= 0;
+      this.still = true;
     }
-  } else {
+
+    for(var i = 0; i < spiders.length; i++) {
+
+      this.coll = false;
+      cc(this, spiders[i].x, spiders[i].y, spiders[i].r);
+
+      if(this.coll) {
+        if(this.hitSpider !== i) {
+          console.log(frameCount, "spear hit spider[" + i + "]");
+          this.hitSpider = i;
+          this.vx = 0;
+          this.vy = 0;
+          this.still = false;
+
+          spiders[i].health -= 0.5;
+        }
+      } else if(this.hitSpider === i) {
+        this.hitSpider = -1;
+      }
+    }
+  }
+  if(this.still) {
     this.stillTimer ++;
+  }
+  if(this.stillTimer >= 240) {
+    this.stillTimer = 0;
+    this.still = 0;
   }
 
   //circle(this.x, this.y, this.r*2);
@@ -522,7 +589,7 @@ var p = {
   x: 200,
   y: 100,
 
-  r: bs * 0.5,
+  r: bs * 0.4,
 
   vx: 0,
   vy: 0,
@@ -546,14 +613,14 @@ p.draw = function() {
 };
 p.move = function() {
   if (Keys.a || Keys.ArrowLeft) {
-    this.vx = -2;
+    this.vx = -3;
   }
   if (Keys.d || Keys.ArrowRight) {
-    this.vx = 2;
+    this.vx = 3;
   }
 
   if ((Keys.w || Keys.ArrowUp) && this.jump) {
-    this.vy = -8;
+    this.vy = -8.5;
     this.jump = false;
   } else if ((Keys.w || Keys.ArrowUp) && this.climb && this.vy > -2) {
     this.vy = -2;
@@ -600,6 +667,8 @@ Spider = function(x, y) {
   this.x = x;
   this.y = y;
 
+  this.health = 1;
+
   this.r = bs*0.5;
 
   this.svx = 0;
@@ -629,7 +698,7 @@ Spider = function(x, y) {
   }
 
   this.a = 0;
-  this.ll = this.maxLegLength/5;
+  this.ll = this.maxLegLength/3;
 
   this.feet = (function(px, py, sl) {
     var f = [];
@@ -651,6 +720,9 @@ Spider = function(x, y) {
           [0, 0],
           [0, 0],
         ],
+
+        sideX: 0,
+        sideY: 0,
 
         toX: px + Math.sin((i + 0.5)*mult)*10,
         toY: py + Math.cos((i + 0.5)*mult)*10,
@@ -682,7 +754,13 @@ Spider.prototype.stepRay = function(x, y, vx, vy, count) {
   if(blocksArr[~~(y/bs)] && blocksArr[~~(y/bs)][~~(x/bs)] !== undefined) {
     var b = blocksArr[~~(y/bs)][~~(x/bs)];
     if(b.isStick && count > 40 && init(x, y, b.x, b.y, b.w, b.h) || b.solid && !b.isStick) {
-      return {x: x - vx, y: y - vy};
+
+      return {
+        x: x - vx,
+        y: y - vy,
+        sideX: (x - vx > b.x + b.w*0.5) ? 1 : -1,
+        sideY: (y - vy > b.y + b.h*0.5) ? 1 : -1,
+      };
     }
   }
   if(count < this.maxLegLength) {
@@ -718,6 +796,8 @@ Spider.prototype.updateFoot = function(f, i) {
 
       f.toX = coords.x;
       f.toY = coords.y;
+      f.sideX = coords.sideX;
+      f.sideY = coords.sideY;
       f.delay = 0;
       f.placed = false;
     }
@@ -741,21 +821,23 @@ Spider.prototype.updateFoot = function(f, i) {
   //line(this.x, this.y, f.x, f.y);
   var l = 4;
   for(var i = 1; i < l - 1; i++) {
-    f.nodes[i][1] -= (f.nodes[3][1] < f.nodes[0][1] ? -1 : 1)*5;
-    f.nodes[i][0] -= (f.nodes[3][0] < f.nodes[0][0] ? 1 : -1)*3;
+    /*f.nodes[i][1] += (f.nodes[3][1] < f.nodes[0][1] ? -1 : 1)*5;
+    f.nodes[i][0] -= (f.nodes[3][0] < f.nodes[0][0] ? -1 : 1)*3;*/
+    f.nodes[i][0] += f.sideX*5;
+    f.nodes[i][1] += f.sideY*5;
   }
   for(var i = 1; i < l - 1; i++) {
     this.place(f.nodes[i - 1], f.nodes[i]);
     this.place(f.nodes[l - i], f.nodes[(l - i) - 1]);
   }
 
-  strokeWeight(3);
-  ctx.beginPath();
-  ctx.moveTo(f.nodes[0][0], f.nodes[0][1]);
-  for(var i = 0; i < l; i++) {
-    ctx.lineTo(f.nodes[i][0], f.nodes[i][1]);
-  }
-  ctx.stroke();
+
+  strokeWeight(4);
+  line(f.nodes[0][0], f.nodes[0][1], f.nodes[1][0], f.nodes[1][1]);
+  strokeWeight(2);
+  line(f.nodes[1][0], f.nodes[1][1], f.nodes[2][0], f.nodes[2][1]);
+  strokeWeight(1.5);
+  line(f.nodes[2][0], f.nodes[2][1], f.nodes[3][0], f.nodes[3][1]);
 
 
 
@@ -855,12 +937,18 @@ Spider.prototype.findDir = function(x, y) {
 
 };
 
-spiders.push(new Spider(200, 100));
 
 // } spider object
 
 // {
-
+function calcShadow(a, n) {
+  return a - (n - a)*50;
+}
+function shadow(x, y, w, h, lx, ly) {
+  quad(x, y, calcShadow(x, lx), calcShadow(y, ly), calcShadow(x + w, lx), calcShadow(y + h, ly), x + w, y + h);
+  quad(x + w, y, calcShadow(x + w, lx), calcShadow(y, ly), calcShadow(x, lx), calcShadow(y + h, ly), x, y + h);
+  rect(x, y, w, h);
+}
 Block = function(x, y, type) {
   this.x = x * bs;
   this.y = y * bs;
@@ -871,8 +959,7 @@ Block = function(x, y, type) {
   this.solid = true;
 };
 Block.prototype.draw = function() {
-  fill(50, 53, 64);
-  rect(this.x, this.y, this.w, this.h);
+
 };
 
 Stick = function(x, y, type) {
@@ -918,7 +1005,12 @@ Pipe.prototype.onCollide = function(that) {
     //console.log(this.pipe + ". " + this.toLevel + ": " + this.toPipe);
     that.spawn = this.toPipe;
     if(that.isPlayer) {
-      blocksArr = fillLevel(this.toLevel);
+      lvl = this.toLevel;
+      p.onSpawn = 2;
+      p.x = maps[lvl][1][this.toPipe][2];
+      p.y = maps[lvl][1][this.toPipe][3];
+
+      blocksArr = maps[lvl][0];
     }
   }
 
@@ -955,30 +1047,17 @@ Scenes = {
     background(240);
   },
   game: function() {
-    background(250, 250, 250);
+    background(50, 53, 64);
 
     pushMatrix();
     translate(-Cam.x, -Cam.y);
 
-
-    fill(50, 53, 64);
-    rect(-600, -300, 600, 900);
-    rect(blocksArr[0].length * bs, -300, 600, 900);
-    rect(0, blocksArr.length * bs, blocksArr[0].length * bs, 600);
-    rect(0, -600, blocksArr[0].length * bs, 600);
-
-
-    for (var y = 0; y < blocksArr.length; y++) {
-      for (var x = 0; x < blocksArr[y].length; x++) {
-        if (blocksArr[y][x]) {
-          blocksArr[y][x].draw();
-
-        }
-      }
-    }
-
     for(var i = 0; i < spiders.length; i++) {
       spiders[i].update();
+      if(spiders[i].health <= 0) {
+        spiders.splice(i, 1);
+        i--;
+      }
     }
 
     for(var i = 0; i < rocks.length; i++) {
@@ -990,6 +1069,35 @@ Scenes = {
     }
 
     p.update();
+
+
+    /*fill(0, 0, 0);
+    rect(-600, -300, 600, 900);
+    rect(blocksArr[0].length * bs, -300, 600, 900);
+    rect(0, blocksArr.length * bs, blocksArr[0].length * bs, 600);
+    rect(0, -600, blocksArr[0].length * bs, 600);*/
+
+
+    for (var y = 0; y < blocksArr.length; y++) {
+      for (var x = 0; x < blocksArr[y].length; x++) {
+        if (blocksArr[y][x]) {
+          blocksArr[y][x].draw();
+
+        }
+      }
+    }
+
+    fill(0, 0, 0);
+    for (var y = 0; y < blocksArr.length; y++) {
+      for (var x = 0; x < blocksArr[y].length; x++) {
+        if (blocksArr[y][x] && blocksArr[y][x].solid) {
+          shadow(blocksArr[y][x].x, blocksArr[y][x].y, blocksArr[y][x].w, blocksArr[y][x].h, p.x, p.y);
+        }
+      }
+    }
+
+
+
     popMatrix();
 
     //line(300, 300, mouseX, mouseY);
@@ -997,7 +1105,25 @@ Scenes = {
   },
 };
 
-blocksArr = fillLevel(lvl);
+
+
+(function() {
+
+  for(var k in maps) {
+    maps[k].spiders = [];
+    maps[k].spiderPortals = [];
+    maps[k].rocks = [];
+
+    for(var i in maps[k][1]) {
+      maps[k].spiderPortals.push(maps[k][1][i])
+    }
+
+    maps[k][0] = fillLevel(k);
+  }
+
+})();
+console.log(maps[lvl])
+blocksArr = maps[lvl][0]
 
 var frameCount = 0;
 var intervalID = setInterval(function() {
