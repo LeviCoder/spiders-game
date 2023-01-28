@@ -9,40 +9,59 @@
 
 try {
 
-var Block, Stick, Pipe, Rock, Spear, p;
+var Block, Decor, Stick, Pipe, Rock, Spear, p;
 var grav = 0.4;
-var rocks = [], spiders = [];
+var pings = [];
 
 // {
 
-var lvl = "one",
+Ping = function(x, y) {
+  this.x = x;
+  this.y = y;
+  this.r = 0;
+}
+Ping.prototype.update = function () {
+  if(this.r < 150) {
+    this.r += 5;
+
+    stroke(255, 255, 255, 50);
+    strokeWeight((1 - this.r/150)*7)
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.r, 0, Math.PI*2);
+    ctx.stroke();
+  } else {
+    this.dead = true;
+  }
+};
+function ping(x, y) {
+  pings.push(new Ping(x, y));
+
+  for(var i = 0; i < maps[lvl].spiders.length; i++) {
+    //if(dist(x, y, maps[lvl].spiders[i].x, maps[lvl].spiders[i].y) < 300) {
+      maps[lvl].spiders[i].seekX = x;
+      maps[lvl].spiders[i].seekY = y;
+    //}
+  }
+}
+
+// } 'Ping' constructor
+
+
+// {
+
+var lvl = "two",
   blocksArr = [];
 var maps = {
-  "one": [
-    [
-      "################",
-      "#...B....E.....#",
-      "#.............##",
-      "#............###",
-      "#...........##.#",
-      "#..........##..#",
-      "#....SSS..##...#",
-      "#........RRR...#",
-      "#.............A#",
-      "################",
-    ],
-    {"A": ["two", "B"], "B": ["two", "B"]},
-  ],
   "two": [
     [
       "###########....",
       "#.........#....",
-      "#.........#....",
-      "###.......#####",
-      "#B............#",
+      "#.c.......#....",
+      "####......#####",
+      "#Bgggggggggggg#",
       "###############",
     ],
-    {"B": ["one", "A"]}
+    {"B": ["one", "A", "left"]}
   ],
   "three": [
     [
@@ -65,13 +84,44 @@ var maps = {
       "#..............#",
       "################",
     ],
-    {"B": ["two", "B"]},
+    {"B": ["two", "B", "left"]},
+  ],
+  "one": [
+    [
+      "####################",
+      "#lllBlllllllllllllg#",
+      "#................g##",
+      "#...............g###",
+      "#..............g##.#",
+      "#.............g##..#",
+      "#....SSSSSSS..##...#",
+      "#............RRR...#",
+      "#.............#....#",
+      "#.......|..........#",
+      "#.......|.....#....#",
+      "#.......|..........#",
+      "#.......|.....#....#",
+      "#.......|..........#",
+      "#.....E.|.....#....#",
+      "#.......|..........#",
+      "#.......|.....#....#",
+      "#.......|..........#",
+      "#.......|gggggggggA#",
+      "####################",
+    ],
+    {"A": ["two", "B", "right"], "B": ["two", "B", "up"],},
   ],
 };
 
 var blockKeys = {
   "#": 0,
 };
+
+var decorKeys = {
+  "g": "grass",
+  "l": "vine",
+  "c": "collectable",
+}
 
 function fillLevel(l) {
   //lvl = l;
@@ -100,6 +150,10 @@ function fillLevel(l) {
         arr[y].push(new Pipe(x, y, l[y][x], maps[lvl][1][l[y][x]]))
         maps[lName][1][l[y][x]].push((x + 0.5)*bs);
         maps[lName][1][l[y][x]].push((y + 0.5)*bs);
+
+      } else if(decorKeys[l[y][x]] !== undefined) {
+        arr[y].push(new Decor(x, y, decorKeys[l[y][x]]))
+
       } else {
 
         switch (l[y][x]) {
@@ -198,19 +252,24 @@ function cc(that, px, py, pr) {
     that.x = px + Math.sin(a) * (that.r + pr);
     that.y = py + Math.cos(a) * (that.r + pr);
 
-    if (a === Math.PI || a === 0) {
-      that.vy = 0;
-    }
+
     if (a > Math.PI*0.5 || a < -Math.PI*0.5) {
+      if(that.isPlayer && that.vy > 8) {
+        ping(that.x, that.y)
+      }
       that.vy *= 0.6;
       that.jump = true;
 
+    }
+    if (a === Math.PI || a === 0) {
+      that.vy = 0;
     }
     if (a === Math.PI*0.5 || a === -Math.PI*0.5) {
       that.vx *= -0.3;
     }
 
     that.coll = true;
+
   }
 
 }
@@ -251,7 +310,7 @@ function circCollide(that, blocks) {
 
 
 // {
-var Cam, Keys, Mouse, Scenes, Scene = "game",
+var Cam, Keys, Mouse, Scenes, Scene = "load",
   Trans, Images, ImageLoader;
 
 Cam = {
@@ -261,11 +320,11 @@ Cam = {
   mx: 0,
   my: 0,
 
-  drag: 0.1,
+  drag: 0.9,
 
   update: function(x, y) {
-    this.x = Math.lerp(x, this.x, this.drag);
-    this.y = Math.lerp(y, this.y, this.drag);
+    this.x = lerp(x, this.x, this.drag);
+    this.y = lerp(y, this.y, this.drag);
 
     this.mx = mouseX + this.x;
     this.my = mouseY + this.y;
@@ -353,7 +412,7 @@ ImageLoader = {
   once: true,
   pretty: function() {
     //pushStyle();
-
+/*
     noStroke();
 
     background(30);
@@ -369,7 +428,7 @@ ImageLoader = {
     textSize(20);
     Math.text("loading " + this.keys[this.index - 1] + "...", width * 0.5, height * 0.5 - 10);
 
-    //popStyle();
+    //popStyle();*/
   },
   load: function() {
 
@@ -379,26 +438,25 @@ ImageLoader = {
     }
 
     if (this.index < this.keys.length) {
-      background(0, 0);
 
       var img = Images[this.keys[this.index]]();
 
       if (img === undefined) {
         img = get();
-      } else if (!img instanceof PImage && typeof img === "object") {
+      }/* else if (!img instanceof PImage && typeof img === "object") {
         if (img.img === undefined) {
           img = get(img.x || 0, img.y || 0, img.w || width, img.h || height);
-        } else {
+        }*else {
           img = img.img;
         }
-      }
+      }*/
 
       Images[this.keys[this.index]] = img;
 
       this.index++;
       this.pretty();
     } else {
-      Trans.set("menu");
+      Trans.set("game");
       Trans.n = 1;
       //println("set scene to menu or smth");
     }
@@ -406,6 +464,8 @@ ImageLoader = {
 };
 
 // } interaction and misc functions
+
+
 
 // {
 
@@ -448,13 +508,19 @@ Rock.prototype.update = function () {
   if(this.coll) {
     this.vx *= 0.8;
     this.vy *= 0.8;
+    if(!this.colliding) {
+      ping(this.x, this.y);
+      this.colliding = true;
+    }
+  } else {
+    this.colliding = false;
   }
 
   if(!init(this.vx, this.vy, -0.05, -0.05, 0.1, 0.1)) {
-    for(var i = 0; i < spiders.length; i++) {
+    for(var i = 0; i < maps[lvl].spiders.length; i++) {
 
       this.coll = false;
-      cc(this, spiders[i].x, spiders[i].y, spiders[i].r);
+      cc(this, maps[lvl].spiders[i].x, maps[lvl].spiders[i].y, maps[lvl].spiders[i].r);
 
       if(this.coll) {
         if(this.hitSpider !== i) {
@@ -463,7 +529,7 @@ Rock.prototype.update = function () {
           this.vx = 0;
           this.vy = 0;
 
-          spiders[i].health -= 0.35;
+          maps[lvl].spiders[i].health -= 0.35;
         }
       } else if(this.hitSpider === i) {
         this.hitSpider = -1;
@@ -476,7 +542,7 @@ Rock.prototype.update = function () {
     this.dead = true;
   }
 
-  fill(0, 0, 0)
+  fill(100, 100, 100)
   circle(this.x, this.y, this.r*2);
   this.timer++;
 };
@@ -497,6 +563,8 @@ Spear = function(x, y, a) {
   this.timer = 0;
   this.stillTimer = 0;
   this.still  = false;
+
+  this.harming = false;
 
   this.a = a;
 };
@@ -530,28 +598,35 @@ Spear.prototype.run = function () {
     circCollide(this, checkBlocks(this.x, this.y, blocksArr));
 
     if(this.coll) {
+      if(dist(this.vx, this.vy, 0, 0) > this.grav) {
+        ping(this.x, this.y);
+      }
       this.vx *= 0;
       this.vy *= 0;
       this.still = true;
+      this.harming = false;
     }
 
-    for(var i = 0; i < spiders.length; i++) {
+    if(this.harming) {
+      for(var i = 0; i < maps[lvl].spiders.length; i++) {
 
-      this.coll = false;
-      cc(this, spiders[i].x, spiders[i].y, spiders[i].r);
+        this.coll = false;
+        cc(this, maps[lvl].spiders[i].x, maps[lvl].spiders[i].y, maps[lvl].spiders[i].r);
 
-      if(this.coll) {
-        if(this.hitSpider !== i) {
-          console.log(frameCount, "spear hit spider[" + i + "]");
-          this.hitSpider = i;
-          this.vx = 0;
-          this.vy = 0;
-          this.still = false;
+        if(this.coll) {
+          if(this.hitSpider !== i) {
+            console.log(frameCount, "spear hit spider[" + i + "]");
+            this.hitSpider = i;
+            this.vx = 0;
+            this.vy = 0;
+            this.still = false;
+            this.harming = false;
 
-          spiders[i].health -= 0.5;
+            maps[lvl].spiders[i].health -= 0.5;
+          }
+        } else if(this.hitSpider === i) {
+          this.hitSpider = -1;
         }
-      } else if(this.hitSpider === i) {
-        this.hitSpider = -1;
       }
     }
   }
@@ -575,8 +650,8 @@ Spear.prototype.update = function () {
     p.holding = this;
     this.dead = true;
   }
-  stroke(0, 0, 0);
-  strokeWeight(2);
+  stroke(100, 100, 100);
+  strokeWeight(3);
   var vx = Math.sin(this.a)*this.r*2, vy = Math.cos(this.a)*this.r*2;
   line(this.x - vx, this.y - vy, this.x + vx, this.y + vy)
   this.timer++;
@@ -602,14 +677,23 @@ var p = {
   onSpawn: 2,
 
   holding: false,
+
+  collectables: 0,
 };
 p.draw = function() {
-  fill(255, 0, 0);
-  if(this.jump) {
-    fill(50, 200, 50);
-  }
-  circle(this.x, this.y, this.r * 2);
-  //rect(this.x - this.r, this.y - this.r, this.r*2, this.r*2)
+
+  fill(100, 100, 100)
+  circle(this.x, this.y + 5, this.r * 1.7);
+  circle(this.x, this.y + 2, this.r * 1.7);
+
+  fill(230, 230, 230)
+  circle(this.x, this.y - this.r, this.r*1.2);
+  rect(this.x + -5 + -4, this.y - this.r*1.9, 5, 10)
+  rect(this.x + 4, this.y - this.r*1.9, 5, 10)
+
+  /*fill(0, 0, 0)
+  circle(this.x - 3, this.y - this.r, 3);
+  circle(this.x + 3, this.y - this.r, 3);*/
 };
 p.move = function() {
   if (Keys.a || Keys.ArrowLeft) {
@@ -651,7 +735,8 @@ p.update = function() {
 
   if(Mouse.click && this.holding) {
     this.holding.reset(this.x, this.y, Math.atan2(mouseX - this.x, mouseY - this.y), 10);
-    rocks.push(this.holding);
+    this.holding.harming = true;
+    maps[lvl].rocks.push(this.holding);
     this.holding = false;
   }
   //console.log(this.holding);
@@ -677,7 +762,10 @@ Spider = function(x, y) {
   this.vx = 0;
   this.vy = 0;
 
-  this.maxLegLength = 90;
+  this.seekX = x;
+  this.seekY = y;
+
+  this.maxLegLength = 110;
   this.reachInCells = 3;
   this.tries = [
     0,
@@ -703,7 +791,7 @@ Spider = function(x, y) {
   this.feet = (function(px, py, sl) {
     var f = [];
 
-    var mult = Math.PI*0.25, dMult = 40/8;
+    var mult = Math.PI*0.25, dMult = 20/8;
 
     for(var i = 0; i < 8; i++) {
       //console.log(px + ", " + py);
@@ -779,13 +867,13 @@ Spider.prototype.placeFoot = function(an) {
 };
 Spider.prototype.updateFoot = function(f, i) {
 
-  if(f.delay <= 10) {
-    f.x = lerp(f.fromX, f.toX, f.delay*0.1);
-    f.y = lerp(f.fromY, f.toY, f.delay*0.1);
+  if(f.delay <= 5) {
+    f.x = lerp(f.fromX, f.toX, f.delay*0.2);
+    f.y = lerp(f.fromY, f.toY, f.delay*0.2);
 
-  } else if(f.delay > 40) {
+  } else if(f.delay > 20 && this.move) {
 
-    var a = this.findDir(~~(mouseX/bs), ~~(mouseY/bs));
+    var a = this.findDir(~~(this.seekX/bs), ~~(this.seekY/bs));
     if(a && !(a[0] === 0 && a[1] === 0)) {
       this.a = Math.atan2(a[0], a[1])
     }
@@ -804,11 +892,8 @@ Spider.prototype.updateFoot = function(f, i) {
   } else {
     f.placed = true;
   }
-  f.delay++;
-
-  if(f.placed) {
-    fill(255, 0, 0);
-    circle(f.x, f.y, 5, 5);
+  if(this.move) {
+    f.delay++;
   }
 
   f.nodes[3][0] = f.x;
@@ -821,10 +906,8 @@ Spider.prototype.updateFoot = function(f, i) {
   //line(this.x, this.y, f.x, f.y);
   var l = 4;
   for(var i = 1; i < l - 1; i++) {
-    /*f.nodes[i][1] += (f.nodes[3][1] < f.nodes[0][1] ? -1 : 1)*5;
-    f.nodes[i][0] -= (f.nodes[3][0] < f.nodes[0][0] ? -1 : 1)*3;*/
-    f.nodes[i][0] += f.sideX*5;
-    f.nodes[i][1] += f.sideY*5;
+    f.nodes[i][0] += f.sideX*3;
+    f.nodes[i][1] += f.sideY*3;
   }
   for(var i = 1; i < l - 1; i++) {
     this.place(f.nodes[i - 1], f.nodes[i]);
@@ -852,29 +935,32 @@ Spider.prototype.update = function() {
   for(var i = 0; i < this.feet.length; i++) {
     this.updateFoot(this.feet[i], i);
     if(this.feet[i].placed) {
-      var s = spring(this.feet[i].x, this.feet[i].y, this.x, this.y, this.r*2, 0.04);
+      var s = spring(this.feet[i].x, this.feet[i].y, this.x, this.y, this.r*2, 0.2);
 
       sx += s.x;
       sy += s.y;
     }
   }
-
-
-  this.vx = Math.sin(this.a);
-  this.vy = Math.cos(this.a);
-
-
-  this.x += sx + this.vx;
-  this.y += sy + this.vy;
+  this.vx = sx + Math.sin(this.a);
+  this.vy = sy + Math.cos(this.a);
+  if(dist(this.x, this.y, this.seekX, this.seekY) < this.r*1.2) {
+    this.vx *= 0.2;
+    this.vy *= 0.2;
+    this.move = !true;
+  } else {
+    this.move = true;
+  }
+  this.x += this.vx;
+  this.y += this.vy;
 
 
   circCollide(this, checkBlocks(this.x, this.y, blocksArr));
 
   fill(0, 0, 0);
   circle(this.x, this.y, this.r*2);
-  line(this.x, this.y, this.x + Math.sin(this.a)*this.r, this.y + Math.cos(this.a)*this.r);
+  //line(this.x, this.y, this.x + Math.sin(this.a)*this.r, this.y + Math.cos(this.a)*this.r);
 
-  fill(255, 0, 0, 30);
+  //fill(255, 0, 0, 30);
   //circle(this.x, this.y, this.maxLegLength*2);
 };
 Spider.prototype.addToQ = function(x, y, vx, vy) {
@@ -962,6 +1048,29 @@ Block.prototype.draw = function() {
 
 };
 
+Decor = function(x, y, type) {
+  this.x = x * bs;
+  this.y = y * bs;
+
+  this.w = bs;
+  this.h = bs;
+
+  this.type = type;
+  this.solid = false;
+};
+Decor.prototype.draw = function() {
+  fill(0, 0, 0, 100)
+  //rect(this.x, this.y, this.w, this.h);
+  image(Images[this.type], this.x, this.y, 600, 600);
+  //image(Images.grass, this.x + 10, this.y, bs, bs);
+};
+Decor.prototype.onCollide = function(that) {
+  if(this.type === "collectable") {
+    p.collectables++;
+    this.dead = true;
+  }
+};
+
 Stick = function(x, y, type) {
   this.x = (x + 0.5) * bs - 2;
   this.y = y * bs;
@@ -995,6 +1104,8 @@ Pipe = function(x, y, pipe, data) {
   this.toLevel = data[0];
   this.toPipe = data[1];
   this.pipe = pipe;
+
+  this.img = "pipe_" + (data[2] || "right");
 };
 Pipe.prototype.onCollide = function(that) {
   //console.log(this.pipe + " " + that.spawn + " " + that.onSpawn);
@@ -1007,10 +1118,12 @@ Pipe.prototype.onCollide = function(that) {
     if(that.isPlayer) {
       lvl = this.toLevel;
       p.onSpawn = 2;
-      p.x = maps[lvl][1][this.toPipe][2];
-      p.y = maps[lvl][1][this.toPipe][3];
+      p.x = maps[lvl][1][this.toPipe][3];
+      console.log(maps[lvl][1][this.toPipe]);
+      p.y = maps[lvl][1][this.toPipe][4];
 
       blocksArr = maps[lvl][0];
+      pings = [];
     }
   }
 
@@ -1018,25 +1131,96 @@ Pipe.prototype.onCollide = function(that) {
 
 };
 Pipe.prototype.draw = function() {
-  fill("lightgreen");
-  rect(this.x, this.y, this.w, this.h);
+  /*fill("lightgreen");
+  rect(this.x, this.y, this.w, this.h);*/
+  image(Images[this.img], this.x, this.y, 600, 600)
 };
 
 
-// } block constructor
+// } block constructors
 
 Images = {
-  example: function() {
+  grass: function() {
+    ctx.clearRect(0, 0, 600, height)
 
-    /*var c1 = color(57, 106, 115);
-    var c2 = color(0, 31, 97);
-    noStroke();
-    for (var i = 1; i > 0.1; i -= 0.01) {
-      fill(60 - i * 40);
-      ellipse(width * 0.5, height * 0.5, i * width * 1.43, i * width * 1.43);
-    }*/
+    fill(0, 0, 0, 200)
+    ctx.beginPath();
+    ctx.moveTo(0, bs);
+    for(var i = 1; i < bs; i += 2) {
+      ctx.lineTo(i, bs - random(0, 0.8)*bs)
+    }
+    ctx.lineTo(bs, bs);
+    ctx.fill();
 
-    return get();
+    return get(0, 0, bs, bs);
+  },
+  vine: function() {
+    ctx.clearRect(0, 0, 600, height)
+
+    stroke(0, 0, 0, 200)
+    strokeWeight(3);
+    for(var i = 1; i < bs; i += 10) {
+      line(i, 0, i + random(-15, 15), random(0, 0.8)*bs*2)
+    }
+
+    return get(0, 0, bs, bs);
+  },
+  collectable: function() {
+    ctx.clearRect(0, 0, 600, height)
+
+    fill(188, 191, 180)
+    circle(bs*0.5, bs*0.5, bs, bs)
+
+    return get(0, 0, bs, bs);
+  },
+
+  pipe_right: function() {
+    ctx.clearRect(0, 0, 600, height)
+
+    let grad = ctx.createLinearGradient(0, 0, bs, 5);
+    grad.addColorStop(0.2, "rgba(255, 255, 255, 0)");
+    grad.addColorStop(1, "rgba(255, 255, 255, 1)");
+
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, bs, bs);
+
+    return get(0, 0, bs, bs);
+  },
+  pipe_left: function() {
+    ctx.clearRect(0, 0, 600, height)
+
+    let grad = ctx.createLinearGradient(0, 5, bs, 0);
+    grad.addColorStop(0.8, "rgba(255, 255, 255, 0)");
+    grad.addColorStop(0, "rgba(255, 255, 255, 1)");
+
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, bs, bs);
+
+    return get(0, 0, bs, bs);
+  },
+  pipe_up: function() {
+    ctx.clearRect(0, 0, 600, height)
+
+    let grad = ctx.createLinearGradient(5, 0, 0, bs);
+    grad.addColorStop(0.8, "rgba(255, 255, 255, 0)");
+    grad.addColorStop(0, "rgba(255, 255, 255, 1)");
+
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, bs, bs);
+
+    return get(0, 0, bs, bs);
+  },
+  pipe_down: function() {
+    ctx.clearRect(0, 0, 600, height)
+
+    let grad = ctx.createLinearGradient(0, 0, 5, bs);
+    grad.addColorStop(0.2, "rgba(255, 255, 255, 0)");
+    grad.addColorStop(1, "rgba(255, 255, 255, 1)");
+
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, bs, bs);
+
+    return get(0, 0, bs, bs);
   },
 };
 Scenes = {
@@ -1047,23 +1231,21 @@ Scenes = {
     background(240);
   },
   game: function() {
-    background(50, 53, 64);
+    background(51, 48, 42);
 
-    pushMatrix();
-    translate(-Cam.x, -Cam.y);
 
-    for(var i = 0; i < spiders.length; i++) {
-      spiders[i].update();
-      if(spiders[i].health <= 0) {
-        spiders.splice(i, 1);
+    for(var i = 0; i < maps[lvl].spiders.length; i++) {
+      maps[lvl].spiders[i].update();
+      if(maps[lvl].spiders[i].health <= 0) {
+        maps[lvl].spiders.splice(i, 1);
         i--;
       }
     }
 
-    for(var i = 0; i < rocks.length; i++) {
-      rocks[i].update();
-      if(rocks[i].dead) {
-        rocks.splice(i, 1);
+    for(var i = 0; i < maps[lvl].rocks.length; i++) {
+      maps[lvl].rocks[i].update();
+      if(maps[lvl].rocks[i].dead) {
+        maps[lvl].rocks.splice(i, 1);
         i--;
       }
     }
@@ -1077,12 +1259,22 @@ Scenes = {
     rect(0, blocksArr.length * bs, blocksArr[0].length * bs, 600);
     rect(0, -600, blocksArr[0].length * bs, 600);*/
 
+    for(var i = 0; i < pings.length; i++) {
+      pings[i].update();
+      if(pings[i].dead) {
+        pings.splice(i, 1);
+        i--;
+      }
+    }
+
 
     for (var y = 0; y < blocksArr.length; y++) {
       for (var x = 0; x < blocksArr[y].length; x++) {
         if (blocksArr[y][x]) {
           blocksArr[y][x].draw();
-
+          if(blocksArr[y][x].dead) {
+            blocksArr[y][x] = undefined;
+          }
         }
       }
     }
@@ -1097,12 +1289,14 @@ Scenes = {
     }
 
 
-
-    popMatrix();
-
     //line(300, 300, mouseX, mouseY);
     //println(atan2(mouseX - 300, mouseY - 300));
   },
+  game1: function() {
+    //ctx.clearRect(0, 0, width, height);
+
+    image(Images.pipe_right, 0, 0, 600, 600);
+  }
 };
 
 
