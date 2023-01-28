@@ -1,5 +1,5 @@
 var canvas = document.getElementById("canvas");
-var ctx = canvas.getContext("2d");
+var ctx = canvas.getContext("2d", {willReadFrequently: true});
 
 var mouseX = 0,
   mouseY = 0;
@@ -16,6 +16,10 @@ function dist(ax, ay, bx, by) {
 }
 function lerp(a, b, n) {
   return a + (b - a)*n;
+}
+
+function random(min, max) {
+  return min + (Math.random()*(max - min))
 }
 
 function background(r, g, b, a) {
@@ -126,12 +130,16 @@ function rotate(r) {
 
 
 function get(x, y, w, h) {
-  ctx.getImageData(x, y, w, h);
+  var i = new Image();
+  i.src = canvas.toDataURL(ctx.getImageData(x || 0, y || 0, w || width, h || height));
+  return i;
 }
 
-function image(img, x, y) {
-  ctx.putImageData(img, x, y);
+function image(img, x, y, w, h) {
+  //ctx.putImageData(img, x/3, y/3);
+  ctx.drawImage(img, x, y, w, h)
 }
+
 
 
 canvas.addEventListener("mousemove", function(e) {
