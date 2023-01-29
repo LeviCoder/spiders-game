@@ -2,7 +2,7 @@ var canvas = document.getElementById("canvas");
 var ctx = canvas.getContext("2d", {willReadFrequently: true});
 
 var sprites = new Image()
-sprites.src = "https://www.khanacademy.org/computer-programming/sprite-test/4636465623777280/5651538731384832.png";
+sprites.src = "https://www.khanacademy.org/computer-programming/sprite-test/4636465623777280/5939497632317440.png";
 
 var underground = new Image()
 underground.src = "https://www.khanacademy.org/computer-programming/underground-background/6492809897230336/latest.png";
