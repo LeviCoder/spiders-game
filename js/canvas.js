@@ -1,6 +1,15 @@
 var canvas = document.getElementById("canvas");
 var ctx = canvas.getContext("2d", {willReadFrequently: true});
 
+var sprites = new Image()
+sprites.src = "https://www.khanacademy.org/computer-programming/sprite-test/4636465623777280/5651538731384832.png";
+
+var underground = new Image()
+underground.src = "https://www.khanacademy.org/computer-programming/underground-background/6492809897230336/latest.png";
+
+var sky = new Image()
+sky.src = "https://www.khanacademy.org/computer-programming/sky-background/5382416332275712/4780498509676544.png";
+
 var mouseX = 0,
   mouseY = 0;
 var width = 600,
@@ -137,7 +146,8 @@ function get(x, y, w, h) {
 
 function image(img, x, y, w, h) {
   //ctx.putImageData(img, x/3, y/3);
-  ctx.drawImage(img, x, y, w, h)
+  //ctx.drawImage(img, x, y, w, h)
+  ctx.drawImage(sprites, img[0]*bs, img[1]*bs, img[2]*bs, img[3]*bs, x, y, w, h)
 }
 
 
