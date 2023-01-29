@@ -88,14 +88,14 @@ var maps = {
   ],
   "one": [
     [
-      "####################",
-      "#lllBlllllllllllllg#",
+      "####B###############",
+      "#lll.lllllllllllllg#",
       "#................g##",
       "#...............g###",
       "#..............g##.#",
       "#.............g##..#",
-      "#....SSSSSSS..##...#",
-      "#............RRR...#",
+      "#.........SS..##...#",
+      "#............R.R...#",
       "#.............#....#",
       "#.......|..........#",
       "#.......|.....#....#",
@@ -106,8 +106,8 @@ var maps = {
       "#.......|..........#",
       "#.......|.....#....#",
       "#.......|..........#",
-      "#.......|gggggggggA#",
-      "####################",
+      "#.......|ggggggggggA",
+      "#^^#################",
     ],
     {"A": ["two", "B", "right"], "B": ["two", "B", "up"],},
   ],
@@ -121,6 +121,7 @@ var decorKeys = {
   "g": "grass",
   "l": "vine",
   "c": "collectable",
+  "^": "spike",
 }
 
 function fillLevel(l) {
@@ -128,7 +129,6 @@ function fillLevel(l) {
   var lName = l;
   l = maps[l][0];
 
-  rocks = [];
 
   var arr = [];
   for (var y = 0; y < l.length; y++) {
@@ -161,7 +161,7 @@ function fillLevel(l) {
             arr[y].push(new Stick(x, y, l[y][x]));
             break;
           case "E":
-            maps[lName].spiders.push(new Spider(x*bs, y*bs))
+            maps[lName].spiders.push(new Spider(x*bs, y*bs));
             arr[y].push(undefined);
             break;
           case "R":
@@ -184,6 +184,85 @@ function fillLevel(l) {
   }
 
   return arr;
+}
+
+function resetSpiders(l) {
+  for(var i = 0; i < maps[l].spiders.length; i++) {
+    if(maps[l].spiders[i].health >= 0) {
+      var s = new Spider(maps[l].spiders[i].ox, maps[l].spiders[i].oy);
+      s.health = maps[l].spiders[i].health;
+      maps[l].spiders[i] = s;
+    }
+  }
+}
+function saveLevels() {
+  p.saveX = p.x;
+  p.saveY = p.y;
+
+  p.saveLvl = lvl;
+
+  p.saveHolding = false;
+  if(p.holding) {
+    p.saveHolding = [p.holding.x, p.holding.y, p.holding.harming === undefined];
+  }
+
+
+  for(var j in maps) {
+    maps[j].saveRocks = [];
+    for(var i = 0; i < maps[j].rocks.length; i++) {
+      maps[j].saveRocks.push([maps[j].rocks[i].x, maps[j].rocks[i].y, maps[j].rocks[i].harming === undefined])
+    }
+
+    maps[j].saveSpiders = [];
+    for(var i = 0; i < maps[j].spiders.length; i++) {
+      if(maps[j].spiders[i].health > 0) {
+        maps[j].saveSpiders.push([maps[j].spiders[i].ox, maps[j].spiders[i].oy, maps[j].spiders[i].health])
+      }
+    }
+  }
+}
+function resetLevels() {
+  p.x = p.saveX;
+  p.y = p.saveY;
+
+  lvl = p.saveLvl;
+
+  p.vx = 0;
+  p.vy = 0;
+  p.dead = false;
+  p.onSpawn = 2;
+
+  p.holding = false;
+  if(p.saveHolding) {
+    p.holding = p.saveHolding[2] ? new Rock(p.saveHolding[0], p.saveHolding[1]) : new Spear(p.saveHolding[0], p.saveHolding[1]);
+  }
+
+  resetSpiders(lvl);
+
+
+  for(var j in maps) {
+
+    maps[j].rocks = [];
+    for(var i = 0; i < maps[j].saveRocks.length; i++) {
+
+      var r = maps[j].saveRocks[i];
+      r = r[2] ? new Rock(r[0], r[1]) : new Spear(r[0], r[1]);
+      maps[j].rocks.push(r)
+      console.log(maps[j].rocks[4])
+    }
+    console.log(maps[j].rocks)
+
+
+    maps[j].spiders = [];
+    for(var i = 0; i < maps[j].saveSpiders.length; i++) {
+
+      var r = maps[j].saveSpiders[i];
+      var s = new Spider(r[0], r[1]);
+      s.health = r[2];
+      maps[j].spiders.push(s);
+    }
+
+  }
 }
 
 
@@ -310,7 +389,7 @@ function circCollide(that, blocks) {
 
 
 // {
-var Cam, Keys, Mouse, Scenes, Scene = "load",
+var Cam, Keys, Mouse, Scenes, Scene = "game",
   Trans, Images, ImageLoader;
 
 Cam = {
@@ -356,7 +435,7 @@ canvas.addEventListener("mouseup", mouseReleased);
 
 Keys = {};
 function keyPressed(e) {
-  console.log(e.key);
+  //console.log(e.key);
   e.preventDefault();
   Keys[e.key] = true;
 };
@@ -475,6 +554,8 @@ Rock = function(x, y, a) {
 
   this.v = 8;
 
+  a = a || 0;
+
   this.vx = Math.sin(a)*2;
   this.vy = Math.cos(a)*2;
 
@@ -542,7 +623,7 @@ Rock.prototype.update = function () {
     this.dead = true;
   }
 
-  fill(100, 100, 100)
+  fill(255, 255, 255)
   circle(this.x, this.y, this.r*2);
   this.timer++;
 };
@@ -552,6 +633,8 @@ Spear = function(x, y, a) {
   this.y = y;
 
   this.v = 8;
+
+  a = a || 0;
 
   this.vx = Math.sin(a)*2;
   this.vy = Math.cos(a)*2;
@@ -650,7 +733,7 @@ Spear.prototype.update = function () {
     p.holding = this;
     this.dead = true;
   }
-  stroke(100, 100, 100);
+  stroke(255, 255, 255);
   strokeWeight(3);
   var vx = Math.sin(this.a)*this.r*2, vy = Math.cos(this.a)*this.r*2;
   line(this.x - vx, this.y - vy, this.x + vx, this.y + vy)
@@ -717,8 +800,19 @@ p.update = function() {
   this.vy += grav;
   this.vy = constrain(this.vy, -100, 10);
 
-  this.x += this.vx;
-  this.y += this.vy;
+  if(this.dead) {
+    Trans.set("dead");
+  } else {
+    this.x += this.vx;
+    this.y += this.vy;
+  }
+
+  this.x = constrain(this.x, this.r, width - this.r);
+  this.y = constrain(this.y, this.r, height - this.r);
+
+  if(this.y > height + 200) {
+    this.dead = true;
+  }
 
 
   this.vx *= 0.5;
@@ -739,6 +833,8 @@ p.update = function() {
     maps[lvl].rocks.push(this.holding);
     this.holding = false;
   }
+
+
   //console.log(this.holding);
 
 };
@@ -751,6 +847,10 @@ p.update = function() {
 Spider = function(x, y) {
   this.x = x;
   this.y = y;
+
+  this.ox = x;
+  this.oy = y;
+
 
   this.health = 1;
 
@@ -767,23 +867,9 @@ Spider = function(x, y) {
 
   this.maxLegLength = 110;
   this.reachInCells = 3;
-  this.tries = [
-    0,
-    0.1, -0.1, 0.2, -0.2, 0.3, -0.3, 0.4, -0.4,
-    1, -1, 2, -2, 3, -3, 4, -4, 5,
-    0.5, -0.5, 1.5, -1.5, 2.5, -2.5, 3.5, -3.5, 4.5, -4.5
-  ];
-  this.tries = [];
-  n = 1;
-  for(var i = 0; i < 5; i += 2) {
-    for(var j = 0; j < 2; j++) {
-      for(var k = 0; k < 2; k += 0.2) {
-        this.tries.push((i + k)*n);
-      }
-      n *= -1;
-    }
 
-  }
+
+  this.tries = [0, 0.2, 0.4, 0.6, 0.8, 1, 1.2, 1.4, 1.6, 1.8, 2, -0, -0.2, -0.4, -0.6, -0.8, -1, -1.2, -1.4, -1.6, -1.8, -2, 2, 2.2, 2.4, 2.6, 2.8, 3, 3.2, 3.4, 3.6, 3.8, 4, -2, -2.2, -2.4, -2.6, -2.8, -3, -3.2, -3.4, -3.6, -3.8, -4, 4, 4.2, 4.4, 4.6, 4.8, 5, 5.2, 5.4, 5.6, 5.8, 6, -4, -4.2, -4.4, -4.6, -4.8, -5, -5.2, -5.4, -5.6, -5.8, -6];
 
   this.a = 0;
   this.ll = this.maxLegLength/3;
@@ -1035,6 +1121,7 @@ function shadow(x, y, w, h, lx, ly) {
   quad(x + w, y, calcShadow(x + w, lx), calcShadow(y, ly), calcShadow(x, lx), calcShadow(y + h, ly), x, y + h);
   rect(x, y, w, h);
 }
+
 Block = function(x, y, type) {
   this.x = x * bs;
   this.y = y * bs;
@@ -1057,17 +1144,28 @@ Decor = function(x, y, type) {
 
   this.type = type;
   this.solid = false;
+
+  if(this.type === "spike") {
+    this.y += bs*0.5;
+    this.h*= 0.5;
+  }
 };
 Decor.prototype.draw = function() {
   fill(0, 0, 0, 100)
   //rect(this.x, this.y, this.w, this.h);
-  image(Images[this.type], this.x, this.y, 600, 600);
+  image(Images[this.type], this.x, this.y, bs, bs);
   //image(Images.grass, this.x + 10, this.y, bs, bs);
 };
 Decor.prototype.onCollide = function(that) {
-  if(this.type === "collectable") {
-    p.collectables++;
-    this.dead = true;
+  if(that.isPlayer) {
+    if(this.type === "collectable") {
+      p.collectables++;
+      this.dead = true;
+      console.log("move collectable to beacon")
+    } else if(this.type === "spike") {
+      p.dead = true;
+      //console.log("spiked");
+    }
   }
 };
 
@@ -1106,6 +1204,13 @@ Pipe = function(x, y, pipe, data) {
   this.pipe = pipe;
 
   this.img = "pipe_" + (data[2] || "right");
+
+  this.off = {
+    "pipe_left": [bs, 0],
+    "pipe_right": [-bs, 0],
+    "pipe_up": [0, bs],
+    "pipe_down": [0, -bs],
+  }
 };
 Pipe.prototype.onCollide = function(that) {
   //console.log(this.pipe + " " + that.spawn + " " + that.onSpawn);
@@ -1117,6 +1222,7 @@ Pipe.prototype.onCollide = function(that) {
     that.spawn = this.toPipe;
     if(that.isPlayer) {
       lvl = this.toLevel;
+      resetSpiders(lvl);
       p.onSpawn = 2;
       p.x = maps[lvl][1][this.toPipe][3];
       console.log(maps[lvl][1][this.toPipe]);
@@ -1131,15 +1237,18 @@ Pipe.prototype.onCollide = function(that) {
 
 };
 Pipe.prototype.draw = function() {
-  /*fill("lightgreen");
-  rect(this.x, this.y, this.w, this.h);*/
-  image(Images[this.img], this.x, this.y, 600, 600)
+  /*fill("lightgreen");*/
+  fill(0, 0, 0)
+  shadow(this.x, this.y, this.w, this.h, p.x, p.y);
+  image(Images[this.img], this.x + this.off[this.img][0], this.y + this.off[this.img][1], bs, bs)
 };
 
 
 // } block constructors
 
-Images = {
+
+
+/*Images = {
   grass: function() {
     ctx.clearRect(0, 0, 600, height)
 
@@ -1222,27 +1331,37 @@ Images = {
 
     return get(0, 0, bs, bs);
   },
+};*/
+Images = {
+  "vine": [0, 0, 1, 1],
+  "grass": [1, 0, 1, 1],
+  "spike": [0, 1.5, 1, 1],
+  "collectable": [2, 1, 1, 1],
+
+  "pipe_right": [2, 0, 1, 1],
+  "pipe_down": [3, 0, 1, 1],
+  "pipe_left": [4, 0, 1, 1],
+  "pipe_up": [5, 0, 1, 1],
 };
 Scenes = {
-  load: function() {
+  /*load: function() {
     ImageLoader.load();
-  },
+  },*/
   menu: function() {
     background(240);
   },
   game: function() {
     background(51, 48, 42);
-
+    ctx.drawImage(sky, 0, 0, 600, 600)
 
     for(var i = 0; i < maps[lvl].spiders.length; i++) {
-      maps[lvl].spiders[i].update();
-      if(maps[lvl].spiders[i].health <= 0) {
-        maps[lvl].spiders.splice(i, 1);
-        i--;
+      if(maps[lvl].spiders[i].health > 0) {
+        maps[lvl].spiders[i].update();
       }
     }
 
     for(var i = 0; i < maps[lvl].rocks.length; i++) {
+      //console.log(maps[lvl].rocks[i])
       maps[lvl].rocks[i].update();
       if(maps[lvl].rocks[i].dead) {
         maps[lvl].rocks.splice(i, 1);
@@ -1292,10 +1411,14 @@ Scenes = {
     //line(300, 300, mouseX, mouseY);
     //println(atan2(mouseX - 300, mouseY - 300));
   },
-  game1: function() {
-    //ctx.clearRect(0, 0, width, height);
-
-    image(Images.pipe_right, 0, 0, 600, 600);
+  dead: function() {
+    background(0, 0, 0);
+    if(p.dead) {
+      resetLevels();
+      console.log("reset to save");
+    }
+    Trans.set("game");
+    p.dead = false;
   }
 };
 
@@ -1308,14 +1431,11 @@ Scenes = {
     maps[k].spiderPortals = [];
     maps[k].rocks = [];
 
-    for(var i in maps[k][1]) {
-      maps[k].spiderPortals.push(maps[k][1][i])
-    }
-
     maps[k][0] = fillLevel(k);
   }
 
 })();
+saveLevels();
 console.log(maps[lvl])
 blocksArr = maps[lvl][0]
 
