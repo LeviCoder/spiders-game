@@ -2,13 +2,15 @@ var canvas = document.getElementById("canvas");
 var ctx = canvas.getContext("2d", {willReadFrequently: true});
 
 var sprites = new Image()
-sprites.src = "https://www.khanacademy.org/computer-programming/sprite-test/4636465623777280/5939497632317440.png";
+sprites.src = "https://www.khanacademy.org/computer-programming/sprite-test/4636465623777280/5063015150174208.png";
 
-var underground = new Image()
-underground.src = "https://www.khanacademy.org/computer-programming/underground-background/6492809897230336/latest.png";
+var radioshack = new Image()
+radioshack.src = "https://www.khanacademy.org/computer-programming/radio-shack/6492809897230336/6517821840605184.png";
 
 var sky = new Image()
 sky.src = "https://www.khanacademy.org/computer-programming/sky-background/5382416332275712/4780498509676544.png";
+
+var clr = "rgb(242, 92, 205)";
 
 var mouseX = 0,
   mouseY = 0;
@@ -60,6 +62,13 @@ function quad(x1, y1, x2, y2, x3, y3, x4, y4) {
   ctx.lineTo(x4, y4);
   ctx.fill();
 }
+function triangle(x1, y1, x2, y2, x3, y3) {
+  ctx.beginPath();
+  ctx.moveTo(x1, y1);
+  ctx.lineTo(x2, y2);
+  ctx.lineTo(x3, y3);
+  ctx.fill();
+}
 
 function ellipse(x, y, w, h, r) {
   ctx.ellipse(x, y, w, h, r || 0, 0, Math.PI)
@@ -77,6 +86,15 @@ function line(ax, ay, bx, by) {
   ctx.lineTo(bx, by);
   ctx.stroke();
 }
+
+var c = function(x, y, d, n, s) {
+    d *= 0.5;
+    ctx.beginPath();
+    for(var i = -210; i <= 210; i += 30) {
+        curveVertex(x + Math.sin(s + i*n)*d, y + Math.cos(s + i*n)*d);
+    }
+    ctx.fill();
+};
 
 
 function stroke(r, g, b, a) {
