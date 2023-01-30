@@ -8,19 +8,22 @@
 
 	<link rel="preconnect" href="https://fonts.googleapis.com">
 	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-	<link href="https://fonts.googleapis.com/css2?family=Poppins&family=Space+Mono&display=swap" rel="stylesheet">
+	<link href="https://fonts.googleapis.com/css2?family=Chango&display=swap" rel="stylesheet">
 
 	<style>
 		body {
 			padding: 0px;
 			margin: 0px;
 			overflow: hidden;
-			display: flex;
-			justify-content: center;
+			height: 600px;
 			background-color: black;
+			font-family: "Chango";
 		}
 
 		canvas {
+			position: absolute;
+			left: 0px;
+			top: 0px;
 			image-rendering: pixelated;
 			width: 600px;
 			height: 600px;
@@ -30,11 +33,18 @@
 </head>
 
 <body>
+	<p>text</p>
+	<div id="canvas-wrapper">
+		<canvas tabindex='2' id="thumbnail" width="100px" height="100px"></canvas>
+		<canvas tabindex='1' id="canvas" width="200px" height="200px"></canvas>
+	</div>
 
-	<canvas tabindex='1' id="canvas" width="200px" height="200px"></canvas>
 
 	<script src="js/canvas.js" charset="utf-8"></script>
 	<script src="js/main.js" charset="utf-8"></script>
+
+<script src="js/thumbnail.js" charset="utf-8"></script>
+
 
 
 

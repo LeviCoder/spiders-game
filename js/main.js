@@ -12,8 +12,11 @@ try {
 var Block, Decor, Stick, Pipe, Rock, Spear, p;
 var grav = 0.4;
 var pings = [];
-
+var holderCount = 0;
 var collectableCount = 0;
+
+var endingAnimate = false;
+var endingTimer = 0;
 
 var holders = [
   [6, 12, false],
@@ -384,9 +387,9 @@ var maps = {
       "######    E ########",
       "###            #####",
       "##              ####",
-      "A     |         ####",
-      "###  ||  ||      ###",
-      "### ###  ##  ||   ##",
+      "A               ####",
+      "###              ###",
+      "### ###  ##       ##",
       "##  ###  ##  ##   ##",
       "##  ##   ##  ##    C",
       "##^ ##   ##      ###",
@@ -786,7 +789,7 @@ var maps = {
       "A   #",
       "#####",
     ],
-    {"A": ["7a", "A", "left"]}
+    {"A": ["a", "A", "left"]}
   ]
 };
 
@@ -1135,9 +1138,14 @@ canvas.addEventListener("mouseup", mouseReleased);
 
 Keys = {};
 function keyPressed(e) {
-  //console.log(e.key);
+  console.log(e.key);
   e.preventDefault();
   Keys[e.key] = true;
+
+  if(e.key === "Backspace") {
+    canvas.style.display = "none";
+    drawThumbnail();
+  }
 };
 function keyReleased(e) {
   delete Keys[e.key];
@@ -1159,7 +1167,7 @@ Trans = {
         this.to = scene;
       }
     } else {
-      consol.log("Scenes[" + scene + "] is undefined");
+      console.log("Scenes[" + scene + "] is undefined");
     }
   },
 
@@ -1501,8 +1509,11 @@ p.move = function() {
 };
 p.update = function() {
 
-
+  if((lvl === "a" && holderCount === 6 && init(p.x, p.y, 290, 400, 20, 20))) {
+    endingAnimate = true;
+  }
   this.move();
+
   this.vy += grav;
   this.vy = constrain(this.vy, -100, 10);
 
@@ -1733,6 +1744,16 @@ Spider.prototype.update = function() {
       sy += s.y;
     }
   }
+
+  var d = dist(this.x, this.y, p.x, p.y);
+  if(d < this.r + p.r) {
+    p.dead = true;
+  } else if(d < 50) {
+    this.a = Math.atan2(p.x - this.x, p.y - this.y);
+    this.seekX = p.x;
+    this.seekY = p.y;
+  }
+
   this.vx = sx + Math.sin(this.a);
   this.vy = sy + Math.cos(this.a);
   if(dist(this.x, this.y, this.seekX, this.seekY) < this.r*1.2) {
@@ -1754,6 +1775,8 @@ Spider.prototype.update = function() {
 
   //fill(255, 0, 0, 30);
   //circle(this.x, this.y, this.maxLegLength*2);
+
+
 };
 Spider.prototype.addToQ = function(x, y, vx, vy) {
   x += vx;
@@ -1984,90 +2007,6 @@ Pipe.prototype.draw = function() {
 
 
 
-/*Images = {
-  grass: function() {
-    ctx.clearRect(0, 0, 600, height)
-
-    fill(0, 0, 0, 200)
-    ctx.beginPath();
-    ctx.moveTo(0, bs);
-    for(var i = 1; i < bs; i += 2) {
-      ctx.lineTo(i, bs - random(0, 0.8)*bs)
-    }
-    ctx.lineTo(bs, bs);
-    ctx.fill();
-
-    return get(0, 0, bs, bs);
-  },
-  vine: function() {
-    ctx.clearRect(0, 0, 600, height)
-
-    stroke(0, 0, 0, 200)
-    strokeWeight(3);
-    for(var i = 1; i < bs; i += 10) {
-      line(i, 0, i + random(-15, 15), random(0, 0.8)*bs*2)
-    }
-
-    return get(0, 0, bs, bs);
-  },
-  collectable: function() {
-    ctx.clearRect(0, 0, 600, height)
-
-    fill(188, 191, 180)
-    circle(bs*0.5, bs*0.5, bs, bs)
-
-    return get(0, 0, bs, bs);
-  },
-
-  pipe_right: function() {
-    ctx.clearRect(0, 0, 600, height)
-
-    let grad = ctx.createLinearGradient(0, 0, bs, 5);
-    grad.addColorStop(0.2, "rgba(255, 255, 255, 0)");
-    grad.addColorStop(1, "rgba(255, 255, 255, 1)");
-
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, bs, bs);
-
-    return get(0, 0, bs, bs);
-  },
-  pipe_left: function() {
-    ctx.clearRect(0, 0, 600, height)
-
-    let grad = ctx.createLinearGradient(0, 5, bs, 0);
-    grad.addColorStop(0.8, "rgba(255, 255, 255, 0)");
-    grad.addColorStop(0, "rgba(255, 255, 255, 1)");
-
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, bs, bs);
-
-    return get(0, 0, bs, bs);
-  },
-  pipe_up: function() {
-    ctx.clearRect(0, 0, 600, height)
-
-    let grad = ctx.createLinearGradient(5, 0, 0, bs);
-    grad.addColorStop(0.8, "rgba(255, 255, 255, 0)");
-    grad.addColorStop(0, "rgba(255, 255, 255, 1)");
-
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, bs, bs);
-
-    return get(0, 0, bs, bs);
-  },
-  pipe_down: function() {
-    ctx.clearRect(0, 0, 600, height)
-
-    let grad = ctx.createLinearGradient(0, 0, 5, bs);
-    grad.addColorStop(0.2, "rgba(255, 255, 255, 0)");
-    grad.addColorStop(1, "rgba(255, 255, 255, 1)");
-
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, bs, bs);
-
-    return get(0, 0, bs, bs);
-  },
-};*/
 Images = {
   "vine": [0, 0, 1, 1],
   "grass": [1, 0, 1, 1],
@@ -2098,18 +2037,21 @@ Scenes = {
     background(51, 48, 42);
     if(lvl === "a") {
       ctx.drawImage(radioshack, 0, 0, 600, 600);
-      var count = 0;
+      holderCount = 0;
       for(var i = 0; i < holders.length; i++) {
         if(holders[i][2]) {
           image(Images.collectable, holders[i][0]*bs, (holders[i][1] + 0.5)*bs, bs, bs);
 
           fill(clr);
-          rect(300, 350 + count*10, 15, 5);
-          count++;
+          rect(300, 350 + holderCount*10, 15, 5);
+          holderCount++;
         }
       }
 
-      if(count === 6) {
+      if(endingAnimate) {
+        Trans.set("ending");
+        Trans.n = 1;
+      } else if(holderCount === 6) {
         fill(255, 255, 255);
         rect(281, 360, 8, 25);
         triangle(275, 384, 285, 396, 295, 384);
@@ -2120,7 +2062,9 @@ Scenes = {
         rect(280, 417 - 3, 40, 3);
       }
     } else {
-      ctx.drawImage(sky, 0, 0, 600, 600);
+
+      ctx.fillStyle = sky;
+      ctx.fillRect(0, 0, 600, 600);
     }
 
     for(var i = 0; i < maps[lvl].spiders.length; i++) {
@@ -2181,7 +2125,7 @@ Scenes = {
     if(lvl !== "a") {
       for(var i = 0; i < holders.length; i++) {
         var h = holders[i][2];
-        image(Images["glow_" + (h === undefined || h ? "true" : "false")], 210 + i*30, 0, bs, bs);
+        image(Images[(h === undefined || h ? "collectable" : "glow_false")], 210 + i*30, 0, bs, bs);
       }
 
       if(p.holding && p.holding.harming !== undefined) {
@@ -2209,6 +2153,88 @@ Scenes = {
     }
     Trans.set("game");
     p.dead = false;
+  },
+
+
+  ending: function() {
+
+    p.x = 300;
+    p.y = 410;
+    p.vx = 0;
+
+    /*var s = constrain(0.97 + Math.random()*(endingTimer*0.001), 1, 1.02);
+    translate(300, 300);
+    scale(s, s);
+    translate(-300, -300);*/
+    translate(random(-2, 2), random(-2, 2))
+
+    ctx.drawImage(radioshack, 0, 0, 600, 600);
+    for(var i = 0; i < holders.length; i++) {
+      if(holders[i][2]) {
+        image(Images.collectable, holders[i][0]*bs, (holders[i][1] + 0.5)*bs, bs, bs);
+
+        fill(clr);
+        rect(300, 350 + i*10, 15, 5);
+      }
+    }
+
+
+    fill(255, 255, 255);
+    rect(281, 360, 8, 25);
+    triangle(275, 384, 285, 396, 295, 384);
+    rect(277, 417, 46, 3);
+
+    if(endingTimer > 110) {
+      var s = constrain((endingTimer - 110)/4, 0, 1)
+      rect(300 - 62, 305 - s*305, 124, s*305);
+      fill(255, 255, 255, 100);
+      rect(300 - 75, 305 - s*305, 150, s*305);
+
+    } else {
+      Trans.n = 0;
+    }
+
+
+
+    p.draw();
+
+    for (var y = 0; y < blocksArr.length; y++) {
+      for (var x = 0; x < blocksArr[y].length; x++) {
+        if (blocksArr[y][x]) {
+          if(blocksArr[y][x].type === "collectable") {
+            if(holders[blocksArr[y][x].ind][2] === false) {
+              blocksArr[y][x].draw();
+            }
+          } else {
+            blocksArr[y][x].draw();
+          }
+        }
+      }
+    }
+
+    for (var y = 0; y < blocksArr.length; y++) {
+      for (var x = 0; x < blocksArr[y].length; x++) {
+        if (blocksArr[y][x] && blocksArr[y][x].solid) {
+          shadow(blocksArr[y][x].x, blocksArr[y][x].y, blocksArr[y][x].w, blocksArr[y][x].h, p.x, p.y);
+        }
+      }
+    }
+
+    endingTimer++;
+
+
+    if(endingTimer === 200) {
+      Trans.set("over")
+    }
+  },
+
+  over: function() {
+    background(0, 0, 0);
+
+    fill(255, 255, 255);
+    ctx.textAlign = "center";
+    ctx.font = "25px Chango"
+    text("Happily ever after.", 300, 300);
   }
 };
 

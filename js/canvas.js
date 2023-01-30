@@ -7,8 +7,9 @@ sprites.src = "https://www.khanacademy.org/computer-programming/sprite-test/4636
 var radioshack = new Image()
 radioshack.src = "https://www.khanacademy.org/computer-programming/radio-shack/6492809897230336/6517821840605184.png";
 
-var sky = new Image()
-sky.src = "https://www.khanacademy.org/computer-programming/sky-background/5382416332275712/4780498509676544.png";
+var sky = ctx.createLinearGradient(0, 0, 0, 600)
+sky.addColorStop(0, "rgb(33, 36, 51)");
+sky.addColorStop(1, "rgb(97, 40, 49)");
 
 var clr = "rgb(242, 92, 205)";
 
@@ -175,38 +176,3 @@ canvas.addEventListener("mousemove", function(e) {
   mouseX = e.offsetX;
   mouseY = e.offsetY;
 });
-
-/*
-function () {
-
-}
-*/
-
-
-
-/*
-
-3	size
-3	P2D
-125	line
-128	ellipse
-253	mouseX
-504	mouseY
-263	mousePressed
-264	mouseButton
-264	RIGHT
-272	mouseReleased
-277	keyPressed
-278	key
-278	keyCode
-280	keyReleased
-329	pushStyle
-333	background
-342	textAlign
-342	BOTTOM
-343	textSize
-346	popStyle
-459	color
-511	draw
-
-*/
